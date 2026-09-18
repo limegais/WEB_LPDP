@@ -1,87 +1,143 @@
-# RESS Dashboard Monorepo
+# RESS PLTS Monitoring Dashboard
 
-Monorepo untuk dashboard monitoring RESS/PLTS.
+Full-stack monorepo for monitoring solar plants, devices, sensor readings, alarms, and maintenance workflows.
 
 ## Stack
 
-- Frontend: SvelteKit + TailwindCSS + Apache ECharts
-- Backend: Bun + TypeScript + Elysia + Drizzle ORM
-- Database: PostgreSQL (opsional TimescaleDB)
-- Infra: Nginx + MQTT Broker (Mosquitto)
+- Frontend: SvelteKit, Svelte 5, TailwindCSS, Apache ECharts
+- Backend: Bun, TypeScript, Elysia, Drizzle ORM
+- Database: PostgreSQL with a TimescaleDB-ready schema
+- Messaging: Eclipse Mosquitto MQTT
+- Proxy: Nginx
 
-## Struktur
+## Repository structure
 
-```
+```text
 ress-dashboard/
   apps/
-    frontend/
-    backend/
+    frontend/              SvelteKit dashboard
+    backend/               Elysia API and Drizzle database layer
+  packages/
+    shared-types/          Shared TypeScript API contracts
   nginx/
-  docker-compose.yml
+    nginx.conf             Reverse proxy configuration
+  docker-compose.yml       PostgreSQL, MQTT, and Nginx
+  .env.example             Local environment template
 ```
 
-## Prasyarat
+## Prerequisites on Windows
 
-- Bun
+Install:
+
 - Node.js 20+
-- Docker + Docker Compose
+- Bun
+- Docker Desktop with WSL2 integration enabled
+- Git
 
-## Jalankan Lokal
+PowerShell may block `npx.ps1`; use `npm.cmd`/`npx.cmd` when needed.
 
-1. Salin environment:
+## Local development
 
-```bash
-cp .env.example .env
-cp apps/backend/.env.example apps/backend/.env
-cp apps/frontend/.env.example apps/frontend/.env
+1. Open PowerShell in the repository root:
+
+```powershell
+cd C:\Users\ramad\Downloads\ress-dashboard
 ```
 
-2. Jalankan service infra:
+2. Create local environment files:
 
-```bash
+```powershell
+Copy-Item .env.example .env
+Copy-Item apps\backend\.env.example apps\backend\.env
+Copy-Item apps\frontend\.env.example apps\frontend\.env
+```
+
+3. Start PostgreSQL/TimescaleDB, MQTT, and Nginx:
+
+```powershell
 docker compose up -d postgres mqtt nginx
 ```
 
-3. Install dependency backend:
+4. Install backend dependencies and prepare the database:
 
-```bash
-cd apps/backend
+```powershell
+cd apps\backend
 bun install
 bun run db:generate
 bun run db:migrate
 bun run dev
 ```
 
-4. Install dependency frontend:
+5. In a second PowerShell window, install and start the frontend:
 
-```bash
-cd apps/frontend
-npm install
-npm run dev
+```powershell
+cd C:\Users\ramad\Downloads\ress-dashboard\apps\frontend
+npm.cmd install
+npm.cmd run dev
 ```
 
-5. Akses:
+6. Open the application:
 
 - Frontend: http://localhost:5173
-- Backend: http://localhost:3000
+- Backend health: http://localhost:3000/health
 - Swagger: http://localhost:3000/swagger
+- Nginx gateway: http://localhost
 
-## Script Penting
+## Root scripts
 
-Backend:
+From the repository root:
 
-- `bun run dev`
-- `bun run db:generate`
-- `bun run db:migrate`
-- `bun run db:studio`
+```powershell
+npm.cmd run infra:up
+npm.cmd run dev:backend
+npm.cmd run dev:frontend
+npm.cmd run db:generate
+npm.cmd run db:migrate
+npm.cmd run build:frontend
+npm.cmd run infra:down
+```
 
-Frontend:
+## Backend API
 
-- `npm run dev`
-- `npm run build`
-- `npm run preview`
+- `GET /health`
+- `GET /api/devices`
+- `GET /api/readings?limit=100`
+- `GET /api/readings/latest`
+- `POST /api/ingest`
 
-## Catatan
+Example ingestion body:
 
-- Jika ingin TimescaleDB, image default sudah Timescale. Tetap kompatibel dengan PostgreSQL biasa.
-- Nginx config tersedia di folder `nginx` untuk reverse proxy produksi/dev gateway.
+```json
+{
+  "deviceId": "00000000-0000-0000-0000-000000000000",
+  "metric": "active_power_kw",
+  "value": 94.82,
+  "timestamp": "2026-09-18T12:00:00.000Z"
+}
+```
+
+## Frontend API client
+
+The typed client is available at `apps/frontend/src/lib/api/client.ts` and uses `VITE_API_BASE_URL`. Shared response contracts live in `packages/shared-types/src/index.ts`.
+
+## Database and migrations
+
+Drizzle schema is in `apps/backend/src/db/schema.ts`. Migration configuration is in `apps/backend/drizzle.config.ts`, and generated SQL migrations are stored in `apps/backend/drizzle/`.
+
+The default Docker database uses `timescale/timescaledb:latest-pg16`, while the schema remains compatible with standard PostgreSQL.
+
+## Production-like Docker run
+
+Build and run the infrastructure services:
+
+```powershell
+docker compose up -d --build
+```
+
+For a complete production deployment, build the frontend and backend artifacts in CI, run the backend as a managed Bun service, and point Nginx at the frontend and backend service names rather than `host.docker.internal`.
+
+Stop services:
+
+```powershell
+docker compose down
+```

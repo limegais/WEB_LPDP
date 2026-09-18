@@ -1,0 +1,19 @@
+{
+  "name": "ress-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm --prefix apps/frontend run dev",
+    "build:frontend": "npm --prefix apps/frontend run build",
+    "dev:backend": "bun --cwd apps/backend run dev",
+    "db:generate": "bun --cwd apps/backend run db:generate",
+    "db:migrate": "bun --cwd apps/backend run db:migrate",
+    "infra:up": "docker compose up -d postgres mqtt nginx",
+    "infra:down": "docker compose down"
+  }
+}
