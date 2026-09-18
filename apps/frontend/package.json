@@ -1,0 +1,27 @@
+{
+  "name": "ress-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:sveltekit": "node scripts/prepare-sveltekit.mjs",
+    "dev": "npm run prepare:sveltekit && vite dev",
+    "build": "npm run prepare:sveltekit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^4.0.0",
+    "@sveltejs/kit": "^2.48.1",
+    "@types/node": "^22.10.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "svelte": "^5.0.0",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^8.0.1"
+  },
+  "dependencies": {
+    "echarts": "^6.0.0",
+    "lucide-svelte": "^0.468.0"
+  }
+}

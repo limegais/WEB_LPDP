@@ -1,0 +1,5 @@
+$ drizzle-kit migrate
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\Users\ramad\Downloads\ress-dashboard\apps\backend\drizzle.config.ts'
+Using 'postgres' driver for database querying
+[⣷] applying migrations...[2K[1G[⣷] applying migrations...error: script "db:migrate" exited with code 1

@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# env
+.env
+*.env.local
+apps/backend/.env
+apps/frontend/.env
+
+# build
+build/
+.dist/
+dist/
+.svelte-kit/
+coverage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/*.log
+
+# drizzle generated
+apps/backend/drizzle/*.sql

@@ -1,0 +1,26 @@
+{
+  "name": "ress-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.1.1",
+    "@elysiajs/swagger": "^1.1.6",
+    "drizzle-orm": "^0.44.5",
+    "elysia": "^1.1.25",
+    "mqtt": "^5.10.4",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.31.5",
+    "typescript": "^5.6.3"
+  }
+}
