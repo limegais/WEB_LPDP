@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare:sveltekit": "node scripts/prepare-sveltekit.mjs",
-    "dev": "npm run prepare:sveltekit && vite dev",
-    "build": "npm run prepare:sveltekit && vite build",
+    "prepare:sveltekit": "bun scripts/prepare-sveltekit.mjs",
+    "dev": "bun run prepare:sveltekit && vite dev",
+    "build": "bun run prepare:sveltekit && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
@@ -22,7 +22,9 @@
   },
   "dependencies": {
     "@ress/shared-types": "file:../../packages/shared-types",
+    "@types/leaflet": "^1.9.22",
     "echarts": "^6.0.0",
+    "leaflet": "^1.9.4",
     "lucide-svelte": "^0.468.0"
   }
 }

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { authStore, DEMO_USERS } from '$lib/auth';
 
   let email = '';
   let password = '';
@@ -8,16 +10,29 @@
   let errorMessage = '';
   let loading = false;
 
+  onMount(() => authStore.load());
+
   async function handleLogin() {
     errorMessage = '';
     if (!email.trim() || !password.trim()) {
-      errorMessage = 'Email and password are required.';
+      errorMessage = 'Email dan password wajib diisi.';
       return;
     }
 
     loading = true;
-    localStorage.setItem('ress-authenticated', 'true');
-    localStorage.setItem('ress-user-email', email.trim());
+    await new Promise((r) => setTimeout(r, 700));
+
+    const match = DEMO_USERS.find(
+      (u) => u.email === email.trim() && u.password === password
+    );
+
+    if (!match) {
+      loading = false;
+      errorMessage = 'Email atau password tidak valid.';
+      return;
+    }
+
+    authStore.login({ email: match.email, name: match.name, role: match.role });
     if (remember) localStorage.setItem('ress-remember', 'true');
     await goto('/dashboard');
   }
@@ -25,24 +40,60 @@
 
 <svelte:head><title>Login | RESS Monitoring</title></svelte:head>
 
-<main class="login-shell">
-  <section class="login-art">
-    <div class="brand-mark">*</div>
-    <div class="art-copy"><p class="eyebrow">SolarScope Platform</p><h1>Solar energy,<br /><span>under control.</span></h1><p>Monitor plant performance, devices, and energy from one place.</p></div>
-    <div class="sun-grid"></div>
+<main class="shell">
+  <section class="art-side">
+    <div class="brand">
+      <div class="brand-mark">☼</div>
+      <span>SolarScope</span>
+    </div>
+    <div class="art-copy">
+      <p class="eyebrow">RESS Platform</p>
+      <h1>Solar energy,<br /><span>under control.</span></h1>
+      <p class="desc">Monitor plant performance, devices, and energy from one place.</p>
+    </div>
+    <div class="orb"></div>
   </section>
-  <section class="login-panel">
-    <div class="login-content">
+
+  <section class="form-side">
+    <div class="form-inner">
       <p class="eyebrow">Welcome back</p>
       <h2>Sign in to your dashboard</h2>
-      <p class="subtext">Use your account to continue monitoring your solar plants.</p>
+      <p class="sub">Use your account to continue monitoring your solar plants.</p>
+
       <form on:submit|preventDefault={handleLogin}>
-        <label>Email<input bind:value={email} type="email" placeholder="nama@perusahaan.co.id" autocomplete="email" /></label>
-        <label>Password<div class="password-field"><input bind:value={password} type={showPassword ? 'text' : 'password'} placeholder="Enter your password" autocomplete="current-password" /><button type="button" on:click={() => (showPassword = !showPassword)} aria-label="Toggle password visibility">{showPassword ? 'Hide' : 'Show'}</button></div></label>
-        <div class="form-options"><label class="remember"><input bind:checked={remember} type="checkbox" /> Remember me</label><button type="button" class="forgot" on:click={() => (errorMessage = 'Please contact your administrator to reset your password.')}>Forgot password?</button></div>
-        {#if errorMessage}<p class="error">{errorMessage}</p>{/if}
-        <button class="submit" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign in to dashboard'} <span>→</span></button>
+        <label for="email">Email</label>
+        <input id="email" bind:value={email} type="email" placeholder="nama@perusahaan.co.id" autocomplete="email" />
+
+        <label for="password">Password</label>
+        <div class="pw-wrap">
+          <input
+            id="password"
+            bind:value={password}
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+          <button type="button" class="eye" on:click={() => (showPassword = !showPassword)} aria-label="Toggle">
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        <div class="opts">
+          <label class="remember"><input bind:checked={remember} type="checkbox" /> Remember me</label>
+          <button type="button" class="forgot" on:click={() => (errorMessage = 'Hubungi administrator untuk reset password.')}>
+            Forgot password?
+          </button>
+        </div>
+
+        {#if errorMessage}<p class="error" role="alert">{errorMessage}</p>{/if}
+
+        <button id="login-submit" class="submit" type="submit" disabled={loading}>
+          {#if loading}<span class="spin"></span>{/if}
+          {loading ? 'Signing in…' : 'Sign in to dashboard'}
+          {#if !loading}<span class="arrow">→</span>{/if}
+        </button>
       </form>
+
       <p class="help">Need help? <a href="mailto:support@rms.co.id">Contact your administrator</a></p>
     </div>
     <footer>© 2026 PT. Rekayasa Mekatronika Solusindo</footer>
@@ -50,5 +101,230 @@
 </main>
 
 <style>
-  .login-shell{display:grid;min-height:100vh;grid-template-columns:1fr 1fr;background:#fff;color:#17324a}.login-art{position:relative;display:flex;overflow:hidden;flex-direction:column;justify-content:space-between;padding:42px 8%;background:#173a4e;color:#fff}.brand-mark{font-size:30px;color:#ff9a28}.art-copy{position:relative;z-index:1;margin:auto 0;max-width:450px}.eyebrow{color:#ff9224;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.art-copy h1{margin-top:18px;font-size:clamp(36px,4vw,62px);line-height:1.05;letter-spacing:-1px}.art-copy h1 span{color:#ff9a28}.art-copy>p:last-child{max-width:320px;margin-top:22px;color:#b5cad3;font-size:14px;line-height:1.7}.sun-grid{position:absolute;right:-12%;bottom:-25%;height:70%;width:80%;border:1px solid rgb(255 154 40 / 22%);border-radius:50%;box-shadow:0 0 0 40px rgb(255 154 40 / 4%),0 0 0 80px rgb(255 154 40 / 3%)}.sun-grid::after{content:'';position:absolute;inset:18%;border:1px solid rgb(255 154 40 / 25%);border-radius:50%}.login-panel{display:flex;flex-direction:column;justify-content:center;padding:48px 11%}.login-content{width:100%;max-width:420px;margin:0 auto}.login-panel h2{margin-top:12px;font-size:30px;letter-spacing:-.5px}.subtext{margin-top:8px;color:#8397a4;font-size:13px}.login-panel form{margin-top:32px}.login-panel form>label{display:block;margin-top:18px;color:#506b7c;font-size:11px;font-weight:600}.login-panel form>label:first-child{margin-top:0}.login-panel input:not([type=checkbox]){display:block;width:100%;height:44px;margin-top:7px;border:1px solid #dce7eb;border-radius:6px;padding:0 13px;color:#1f3a52;font-size:13px;outline:none}.login-panel input:not([type=checkbox]):focus{border-color:#ff992b;box-shadow:0 0 0 3px rgb(255 153 43 / 12%)}.password-field{position:relative}.password-field input{padding-right:70px!important}.password-field button{position:absolute;right:10px;top:14px;border:0;background:transparent;color:#ff8c20;font-size:10px}.form-options{display:flex;align-items:center;justify-content:space-between;margin-top:15px;color:#8094a1;font-size:11px}.remember{display:flex!important;align-items:center;gap:7px;margin:0!important;font-weight:400!important}.remember input{accent-color:#ff8c20}.forgot{border:0;background:transparent;color:#f18419;font-size:11px}.error{margin-top:12px;border-radius:5px;background:#fff1f2;padding:9px;color:#d64c59;font-size:11px}.submit{display:flex;width:100%;height:46px;align-items:center;justify-content:space-between;margin-top:23px;border:0;border-radius:6px;padding:0 16px;background:#1d3749;color:#fff;font-size:12px;font-weight:700}.submit span{font-size:18px;color:#ff992b}.submit:disabled{cursor:wait;opacity:.7}.help{margin-top:28px;text-align:center;color:#8a9da8;font-size:11px}.help a{color:#f18419}.login-panel footer{margin-top:auto;padding-top:40px;text-align:center;color:#a2b0b8;font-size:10px}@media(max-width:800px){.login-shell{grid-template-columns:1fr}.login-art{min-height:250px;padding:25px 8%}.art-copy{margin:25px 0 0}.art-copy h1{font-size:38px}.art-copy>p:last-child{margin-top:10px}.sun-grid{right:-20%;bottom:-65%}.login-panel{padding:42px 8%;min-height:calc(100vh - 250px)}}
+  :global(body) { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; }
+
+  .shell {
+    display: grid;
+    min-height: 100vh;
+    grid-template-columns: 1fr 1fr;
+    color: #17324a;
+  }
+
+  /* ── Art side ──────────────────────────────────────── */
+  .art-side {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 42px 8%;
+    background: #173a4e;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,.7);
+  }
+  .brand-mark { font-size: 26px; color: #ff9a28; }
+
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #ff4f00;
+    margin: 0 0 14px;
+  }
+
+  .art-copy { position: relative; z-index: 1; max-width: 420px; }
+  .art-copy h1 {
+    margin: 0 0 18px;
+    font-size: clamp(34px, 3.8vw, 58px);
+    line-height: 1.06;
+    letter-spacing: -1.5px;
+  }
+  .art-copy h1 span { color: #ff9a28; }
+  .desc { max-width: 300px; margin: 0; color: #b5cad3; font-size: 13px; line-height: 1.7; }
+
+  /* decorative orb */
+  .orb {
+    position: absolute;
+    right: -14%;
+    bottom: -28%;
+    width: 75%;
+    height: 68%;
+    border-radius: 50%;
+    border: 1px solid rgba(255,154,40,.2);
+    box-shadow:
+      0 0 0 38px rgba(255,154,40,.04),
+      0 0 0 76px rgba(255,154,40,.025);
+    pointer-events: none;
+  }
+  .orb::after {
+    content: '';
+    position: absolute;
+    inset: 18%;
+    border: 1px solid rgba(255,154,40,.22);
+    border-radius: 50%;
+  }
+
+  /* ── Form side ──────────────────────────────────────── */
+  .form-side {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 11%;
+  }
+
+  .form-inner {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .form-side .eyebrow { color: #ff4f00; }
+
+  h2 {
+    margin: 10px 0 8px;
+    font-size: 28px;
+    letter-spacing: -.5px;
+    color: #17324a;
+  }
+
+  .sub { margin: 0 0 30px; color: #8397a4; font-size: 13px; line-height: 1.6; }
+
+  form { display: flex; flex-direction: column; }
+
+  form > label {
+    margin-top: 18px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #506b7c;
+    letter-spacing: .04em;
+  }
+  form > label:first-of-type { margin-top: 0; }
+
+  input:not([type='checkbox']) {
+    display: block;
+    width: 100%;
+    height: 44px;
+    margin-top: 7px;
+    border: 1px solid #dce7eb;
+    border-radius: 6px;
+    padding: 0 13px;
+    color: #1f3a52;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color .18s, box-shadow .18s;
+  }
+  input:not([type='checkbox']):focus {
+    border-color: #ff992b;
+    box-shadow: 0 0 0 3px rgba(255,153,43,.12);
+  }
+
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 64px !important; }
+  .eye {
+    position: absolute;
+    right: 10px; top: 14px;
+    border: 0; background: transparent;
+    color: #f18419; font-size: 10px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+
+  .opts {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 14px;
+    font-size: 11px;
+    color: #8094a1;
+  }
+  .remember {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .remember input { accent-color: #ff8c20; width: auto; height: auto; margin: 0; }
+  .forgot {
+    border: 0; background: transparent;
+    color: #f18419; font-size: 11px; cursor: pointer; font-family: inherit;
+  }
+
+  .error {
+    margin-top: 12px;
+    border-radius: 5px;
+    background: #fff1f2;
+    padding: 9px 11px;
+    color: #d64c59;
+    font-size: 11px;
+  }
+
+  .submit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 46px;
+    margin-top: 22px;
+    border: 0;
+    border-radius: 6px;
+    padding: 0 16px;
+    background: #1d3749;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .18s, opacity .18s;
+  }
+  .submit:hover:not(:disabled) { background: #254a61; }
+  .submit:disabled { opacity: .65; cursor: wait; }
+  .arrow { font-size: 18px; color: #ff992b; }
+
+  .spin {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .65s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .help {
+    margin-top: 26px;
+    text-align: center;
+    font-size: 11px;
+    color: #8a9da8;
+  }
+  .help a { color: #f18419; text-decoration: none; }
+  .help a:hover { text-decoration: underline; }
+
+  footer {
+    margin-top: auto;
+    padding-top: 40px;
+    text-align: center;
+    color: #a2b0b8;
+    font-size: 10px;
+  }
+
+  /* ── Responsive ─────────────────────────────────────── */
+  @media (max-width: 800px) {
+    .shell { grid-template-columns: 1fr; }
+    .art-side { min-height: 220px; padding: 28px 7%; }
+    .art-copy { margin: 18px 0 0; }
+    .art-copy h1 { font-size: 36px; }
+    .orb { right: -22%; bottom: -70%; }
+    .form-side { padding: 36px 7%; }
+  }
 </style>
+

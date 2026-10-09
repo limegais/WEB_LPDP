@@ -1,8 +1,53 @@
 <script lang="ts">
   import Chart from '$lib/components/Chart.svelte';
+  import PlantMap from '$lib/components/PlantMap.svelte';
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { authStore, ROLES, canAccess, type AuthUser } from '$lib/auth';
 
   let menuOpen = false;
+  let currentUser: AuthUser | null = null;
+
+  onMount(() => {
+    authStore.load();
+    const unsub = authStore.subscribe((u) => {
+      currentUser = u;
+      if (!u) goto('/login');
+    });
+    return unsub;
+  });
+
+  function handleLogout() {
+    authStore.logout();
+  }
+
+  $: roleConfig = currentUser ? ROLES[currentUser.role] : null;
+  $: initials = currentUser ? currentUser.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '--';
   let activeRange = 'Day';
+
+  const plantOptions = ['All Plants', 'PLTS Gedung 3 FT', 'PLTS di Indomaker'];
+  let selectedPlant = 'All Plants';
+
+  const plantWeatherData: Record<string, { status: string, icon: string, temp: string, irradiance: string }> = {
+    'All Plants': { status: 'Various', icon: '🌍', temp: '25-33°C', irradiance: 'Avg 650 W/m²' },
+    'PLTS Gedung 3 FT': { status: 'Sunny', icon: '☀️', temp: '29°C', irradiance: '850 W/m²' },
+    'PLTS di Indomaker': { status: 'Partly Cloudy', icon: '⛅', temp: '32°C', irradiance: '520 W/m²' }
+  };
+
+  $: weather = plantWeatherData[selectedPlant] || plantWeatherData['All Plants'];
+
+  const plantBatteryData: Record<string, { soc: number, status: string, power: string, color: string }> = {
+    'All Plants': { soc: 75, status: 'Various', power: 'Aggregate', color: '#19b89e' },
+    'PLTS Gedung 3 FT': { soc: 92, status: 'Charging', power: '0.4 MW', color: '#19b89e' },
+    'PLTS di Indomaker': { soc: 45, status: 'Discharging', power: '0.8 MW', color: '#ff4f00' }
+  };
+
+  $: battery = plantBatteryData[selectedPlant] || plantBatteryData['All Plants'];
+
+  const recentAlarms = [
+    { time: '10:14', msg: 'Inverter 2 Overheating', type: 'fault' },
+    { time: '09:00', msg: 'Grid Voltage Abnormal', type: 'alarm' }
+  ];
 
   const ranges = ['Day', 'Week', 'Month', 'Year', 'Total'];
 
@@ -10,42 +55,39 @@
     { label: 'Home', icon: '⌂', href: '/dashboard' },
     { label: 'Plants', icon: '▦', href: '/plant' },
     { label: 'Devices', icon: '▤', href: '/devices' },
+    { label: 'Owner', icon: '◎', href: '/owner-hub' },
     { label: 'Maintenance', icon: '⌁', href: '/maintenance' },
     { label: 'Reports', icon: '▧', href: '/report' },
     { label: 'Settings', icon: '⚙', href: '/settings' }
   ];
 
   const summaries = [
-    { label: 'Yield today (MWh)', value: '7.83' },
-    { label: 'Yield this month (MWh)', value: '169.93' },
-    { label: 'Total yield (GWh)', value: '2.60' },
-    { label: 'Real-time power (W)', value: '0' },
-    { label: 'Installed power (MWp)', value: '3.69' }
+    { label: 'Yield today (MWh)', value: '7.83', target: '92%' },
+    { label: 'Yield this month (MWh)', value: '169.93', target: '85%' },
+    { label: 'Total yield (GWh)', value: '2.60', target: '' },
+    { label: 'Real-time power (W)', value: '0', target: '' },
+    { label: 'Installed power (MWp)', value: '3.69', target: '' }
   ];
 
   const revenue = [
-    { label: 'Revenue today (IDR)', value: '8,176,669.87' },
-    { label: 'This month (IDR)', value: '167,313,597.75' },
-    { label: 'This year (IDR)', value: '2,145,032,276.78' },
-    { label: 'Total revenue (IDR)', value: '2,540,321,913.90' }
+    { label: 'Revenue today (IDR)', value: '8,176,669.87', target: '95%' },
+    { label: 'This month (IDR)', value: '167,313,597.75', target: '88%' },
+    { label: 'This year (IDR)', value: '2,145,032,276.78', target: '' },
+    { label: 'Total revenue (IDR)', value: '2,540,321,913.90', target: '' }
   ];
 
   const plantStatuses = [
-    { label: 'All plants', value: 17, icon: '▦', color: '#f28a1f' },
-    { label: 'Following', value: 0, icon: '★', color: '#f7b12d' },
+    { label: 'All plants', value: 17, icon: '▦', color: '#ff4f00' },
+    { label: 'Following', value: 0, icon: '★', color: '#ff4f00' },
     { label: 'Normal', value: 13, icon: '●', color: '#19b89e' },
     { label: 'Abnormal', value: 1, icon: '!', color: '#f35a65' },
     { label: 'Offline', value: 3, icon: '◉', color: '#91a1aa' },
-    { label: 'Commissioning', value: 0, icon: '↑', color: '#4a8be0' }
+    { label: 'Commissioning', value: 0, icon: '↑', color: '#00b7ff' }
   ];
 
   const dailyPlants = [
-    ['UNPAD (Student Center)', '3.46 h', '92%'],
-    ['PT. Multi Kencana Niagatama', '3.34 h', '86%'],
-    ['PLTS Dayung Camp', '3.08 h', '79%'],
-    ['PLTS Malaka P01', '2.91 h', '74%'],
-    ['UNPAD (Medical Faculty)', '2.79 h', '69%'],
-    ['PT. Indolakto C3 - Cicurug', '2.78 h', '67%']
+    ['PLTS Gedung 3 FT', '3.46 h', '92%'],
+    ['PLTS di Indomaker', '3.34 h', '86%']
   ];
 
   const powerOption = {
@@ -68,11 +110,11 @@
     },
     series: [
       {
-        name: 'ESS active power',
+        name: 'RESS active power',
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#ff8a1e', width: 2 },
+        lineStyle: { color: '#ff4f00', width: 2 },
         data: [0.08, 0.08, 0.08, 0.08, 0.08, 0.08, 0.08]
       }
     ]
@@ -87,7 +129,7 @@
         label: { show: false },
         data: [
           { value: 2, itemStyle: { color: '#f35a65' } },
-          { value: 1, itemStyle: { color: '#f3b13c' } },
+          { value: 1, itemStyle: { color: '#ff4f00' } },
           { value: 7, itemStyle: { color: '#ecf2f5' } }
         ]
       }
@@ -100,8 +142,8 @@
 </svelte:head>
 
 <div class="min-h-screen bg-[#f3f7f8] text-[#1a3449]">
-  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#e5ecef] bg-white">
-    <div class="flex h-14 items-center justify-center border-b border-[#eef3f5] text-2xl text-[#ff991f]">☼</div>
+  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#0096d6] bg-[#00b7ff]">
+    <div class="flex h-14 items-center justify-center border-b border-[#0096d6] text-2xl text-white font-bold">☼</div>
     <nav class="mt-2 flex flex-1 flex-col gap-1 px-2">
       {#each navigation as item, index}
         <a class:current={index === 0} class="nav-button" href={item.href} title={item.label}>
@@ -119,13 +161,47 @@
   <main class="h-full lg:pl-[72px]">
     <header class="flex h-14 items-center gap-3 border-b border-[#e8eef1] bg-[#f7fafb] px-4 sm:px-6">
       <button class="icon-button lg:hidden" on:click={() => (menuOpen = !menuOpen)} aria-label="Open navigation">☰</button>
-      <p class="hidden text-[11px] text-[#5b7383] xl:block">Good evening, PT. RMS. Friday, 18 Sep 2026</p>
-      <div class="ml-auto flex items-center gap-2">
-        <span class="text-[10px] text-[#6b8493]">Updated: 19:42:30</span>
+      <p class="hidden text-[13px] text-[#3b5262] font-medium xl:block">RESS Solar Monitoring Dashboard</p>
+      
+      <div class="ml-4 flex items-center">
+        <select bind:value={selectedPlant} class="text-[12px] border border-[#dce4e9] rounded px-2 py-1.5 bg-white outline-none text-[#17324a] font-medium">
+          {#each plantOptions as opt}
+            <option value={opt}>{opt}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="ml-auto flex items-center gap-3">
+        <span class="text-[12px] text-[#4b5e6b] font-medium">Updated: 19:42:30</span>
         <button class="icon-button" aria-label="Notifications">♧</button>
-        <div class="grid h-8 w-8 place-items-center rounded-full bg-[#254563] text-[10px] font-bold text-white">R</div>
+        {#if currentUser && roleConfig}
+          <div class="flex items-center gap-2">
+            <div
+              class="rounded px-2 py-0.5 text-[9px] font-bold"
+              style="background:{roleConfig.color}22;color:{roleConfig.color};border:1px solid {roleConfig.color}55"
+            >
+              {roleConfig.badge} {roleConfig.label}
+            </div>
+            <div
+              class="grid h-8 w-8 place-items-center rounded-full text-[10px] font-bold text-white"
+              style="background:{roleConfig.color}"
+              title="{currentUser.name} ({currentUser.email})"
+            >
+              {initials}
+            </div>
+            <button
+              class="icon-button text-[10px] text-[#a0b0bb] hover:text-[#f35a65]"
+              on:click={handleLogout}
+              title="Logout"
+              aria-label="Logout"
+            >⏻</button>
+          </div>
+        {:else}
+          <div class="grid h-8 w-8 place-items-center rounded-full bg-[#254563] text-[10px] font-bold text-white">R</div>
+        {/if}
       </div>
     </header>
+
 
     <div class="frame-wrap">
       <section class="main-frame">
@@ -135,6 +211,14 @@
               <div class="metric-card">
                 <p>{item.label}</p>
                 <strong>{item.value}</strong>
+                {#if item.target}
+                  <div class="target-bar mt-1.5 flex items-center gap-1.5">
+                    <div class="h-1.5 w-full rounded-full bg-[#e9f0f3] overflow-hidden">
+                      <div class="h-full bg-[#19b89e]" style="width: {item.target}"></div>
+                    </div>
+                    <span class="text-[11px] text-[#19b89e] font-bold">{item.target}</span>
+                  </div>
+                {/if}
               </div>
             {/each}
           </div>
@@ -143,6 +227,14 @@
               <div class="metric-card metric-card--revenue">
                 <p>{item.label}</p>
                 <strong>{item.value}</strong>
+                {#if item.target}
+                  <div class="target-bar mt-1.5 flex items-center gap-1.5">
+                    <div class="h-1.5 w-full rounded-full bg-[#e9f0f3] overflow-hidden">
+                      <div class="h-full bg-[#00b7ff]" style="width: {item.target}"></div>
+                    </div>
+                    <span class="text-[11px] text-[#00b7ff] font-bold">{item.target}</span>
+                  </div>
+                {/if}
               </div>
             {/each}
           </div>
@@ -151,7 +243,7 @@
         <div class="middle-band">
           <article class="panel panel-chart">
             <div class="panel-head">
-              <h2>ESS Active Power</h2>
+              <h2>RESS Active Power</h2>
               <div class="control-group">
                 {#each ranges as range}
                   <button class:active={activeRange === range} on:click={() => (activeRange = range)}>{range}</button>
@@ -166,29 +258,97 @@
             <div class="chart-box">
               <Chart option={powerOption} />
             </div>
-            <div class="legend-line"><span></span>ESS active power</div>
+            <div class="legend-line"><span></span>RESS active power</div>
           </article>
 
-          <article class="panel panel-alarm">
-            <h2>Fault Alarm</h2>
-            <div class="alarm-body">
-              <div class="alarm-ring">
-                <Chart option={alarmOption} />
-                <div class="alarm-center">
-                  <strong>3</strong>
-                  <span>Total</span>
+          <article class="panel panel-weather flex flex-col overflow-hidden">
+            <div class="panel-head-simple mb-2">
+              <h2 class="!text-[12px] !text-[#4b5e6b] font-bold">Weather & Irradiance</h2>
+            </div>
+            
+            {#if selectedPlant === 'All Plants'}
+              <div class="flex flex-col flex-1">
+                {#each Object.entries(plantWeatherData).filter(([k]) => k !== 'All Plants') as [name, w]}
+                  <div class="flex justify-between items-center flex-1 border-b border-[#edf2f5] last:border-0 px-1 py-1">
+                    <span class="truncate w-[55%] text-[11px] text-[#2b4357] font-medium" title={name}>{name}</span>
+                    <div class="flex gap-2 items-center text-right flex-shrink-0">
+                      <span title={w.status} class="text-[15px]">{w.icon}</span>
+                      <span class="text-[12px] text-[#17324a] font-bold">{w.temp}</span>
+                      <span class="text-[10px] text-[#4b5e6b]">{w.irradiance}</span>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <div class="flex-1 flex flex-col justify-center items-center text-center">
+                <div class="text-4xl text-[#ff4f00] my-2">{weather.icon}</div>
+                <strong class="text-lg text-[#17324a]">{weather.status}</strong>
+                <div class="flex justify-between w-full px-4 mt-6 text-[12px] text-[#3b5262] font-medium">
+                  <span>Temp: <b class="text-[#17324a] text-[13px]">{weather.temp}</b></span>
+                  <span>Irr: <b class="text-[#17324a] text-[13px]">{weather.irradiance}</b></span>
                 </div>
               </div>
-              <div class="alarm-list">
-                <div><i class="dot fault"></i>Fault <b>2</b></div>
-                <div><i class="dot alarm"></i>Alarm <b>0</b></div>
-                <div><i class="dot notice"></i>Notice <b>0</b></div>
-                <div><i class="dot advice"></i>Advice <b>0</b></div>
+            {/if}
+          </article>
+
+          <article class="panel panel-battery flex flex-col overflow-hidden">
+            <div class="panel-head-simple mb-2">
+              <h2 class="!text-[12px] !text-[#4b5e6b] font-bold">RESS Battery Status</h2>
+            </div>
+            
+            {#if selectedPlant === 'All Plants'}
+              <div class="flex flex-col flex-1">
+                {#each Object.entries(plantBatteryData).filter(([k]) => k !== 'All Plants') as [name, b]}
+                  <div class="flex justify-between items-center flex-1 border-b border-[#edf2f5] last:border-0 px-1 py-1">
+                    <span class="truncate w-[40%] text-[11px] text-[#2b4357] font-medium" title={name}>{name}</span>
+                    <div class="flex-1 mx-2">
+                      <div class="h-2 rounded-full bg-[#e9f0f3] overflow-hidden">
+                        <div class="h-full rounded-full" style="width: {b.soc}%; background: {b.color}"></div>
+                      </div>
+                    </div>
+                    <div class="flex gap-1.5 items-center flex-shrink-0">
+                      <span class="font-bold text-[12px]" style="color: {b.color}">{b.soc}%</span>
+                      <span class="text-[10px] text-[#4b5e6b] font-medium">{b.status}</span>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <div class="flex-1 flex flex-col justify-center items-center text-center">
+                <div class="text-4xl my-2" style="color: {battery.color}">🔋</div>
+                <strong class="text-lg text-[#17324a]">{battery.soc}% SoC</strong>
+                <div class="w-full px-4 mt-4">
+                  <div class="h-2.5 rounded-full bg-[#e9f0f3] overflow-hidden">
+                    <div class="h-full rounded-full" style="width: {battery.soc}%; background: {battery.color}"></div>
+                  </div>
+                </div>
+                <div class="flex justify-between w-full px-4 mt-4 text-[12px] text-[#3b5262] font-medium">
+                  <span style="color: {battery.color}">{battery.status}</span>
+                  <span><b class="text-[#17324a] text-[13px]">{battery.power}</b></span>
+                </div>
+              </div>
+            {/if}
+          </article>
+
+          <article class="panel panel-alarm flex flex-col overflow-hidden">
+            <h2 class="mb-2">Alarms & Feed</h2>
+            <div class="flex flex-col flex-1">
+              {#each recentAlarms as alarm}
+                <div class="flex items-start gap-2 text-[12px] flex-1 py-2 border-b border-[#edf2f5] last:border-0">
+                  <span class="mt-1 flex-shrink-0 w-2.5 h-2.5 rounded-full {alarm.type === 'fault' ? 'bg-[#f35a65]' : 'bg-[#ff4f00]'}"></span>
+                  <div>
+                    <span class="text-[#4b5e6b] font-medium">{alarm.time}</span>
+                    <p class="text-[#17324a] font-bold leading-tight mt-0.5">{alarm.msg}</p>
+                  </div>
+                </div>
+              {/each}
+              <div class="pt-2 mt-auto text-[11px] text-center text-[#00b7ff] font-bold cursor-pointer hover:underline">
+                View all notifications
               </div>
             </div>
           </article>
 
-          <article class="panel panel-plant">
+          <article class="panel panel-plant flex flex-col">
             <h2>Plant Information</h2>
             <div class="status-list">
               {#each plantStatuses as item}
@@ -203,10 +363,10 @@
         </div>
 
         <div class="bottom-band">
-          <article class="panel panel-hours">
+          <article class="panel panel-hours flex flex-col">
             <div class="panel-head-simple">
               <h2>Daily Equivalent Hours</h2>
-              <span>Top 6</span>
+              <span>Top 2</span>
             </div>
             <div class="daily-grid">
               {#each dailyPlants as plant, index}
@@ -224,7 +384,7 @@
             </div>
           </article>
 
-          <article class="panel panel-emission">
+          <article class="panel panel-emission flex flex-col">
             <h2>Emission Reduction</h2>
             <div class="emission-grid">
               <div>
@@ -239,6 +399,13 @@
                 <strong>141,594</strong>
                 <p>Equivalent trees planted</p>
               </div>
+            </div>
+          </article>
+
+          <article class="panel panel-map">
+            <h2>Plant Locations</h2>
+            <div class="map-wrapper" style="margin-top: 8px; height: calc(100% - 24px);">
+              <PlantMap {plantWeatherData} />
             </div>
           </article>
         </div>
@@ -257,28 +424,13 @@
     transform: translateX(0);
   }
 
-  .nav-button {
-    display: flex;
-    min-height: 49px;
-    width: 100%;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    border-radius: 6px;
-    color: #6e8492;
-    font-size: 9px;
-  }
+  .nav-button { display: flex; min-height: 54px; width: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px; font-weight: 600; }
 
-  .nav-button:hover,
-  .nav-button.current {
-    background: #fff7ed;
-    color: #fb8b20;
-  }
+  .nav-button:hover, .nav-button.current { background: rgba(0, 0, 0, 0.15); color: #ffffff; }
 
   .nav-glyph {
-    font-size: 17px;
-    line-height: 17px;
+    font-size: 19px;
+    line-height: 19px;
   }
 
   .icon-button {
@@ -295,22 +447,24 @@
   }
 
   .frame-wrap {
-    min-height: calc(100vh - 56px);
+    height: calc(100vh - 56px);
     padding: 8px 10px 10px;
-    overflow: visible;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .main-frame {
     display: grid;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto 1fr 1fr;
     gap: 10px;
-    height: auto;
+    flex: 1;
     min-height: 0;
     border: 1px solid #e4ecef;
     border-radius: 14px;
     background: radial-gradient(circle at top right, #ffffff 0%, #f7fbfd 38%, #f2f7f9 100%);
     padding: 10px;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .panel {
@@ -355,46 +509,60 @@
   }
 
   .metric-card p {
-    color: #7d909d;
-    font-size: 9px;
-    line-height: 1.2;
+    color: #546977;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
   }
 
   .metric-card strong {
     display: block;
-    margin-top: 6px;
-    font-size: 17px;
+    margin-top: 8px;
+    font-size: 20px;
     line-height: 1.15;
     color: #17324a;
   }
 
   .metric-card--revenue strong {
-    font-size: 14px;
+    font-size: 17px;
   }
 
   .middle-band {
     display: grid;
-    grid-template-columns: 1.5fr 0.75fr 0.75fr;
+    grid-template-columns: 1.5fr 0.6fr 0.6fr 0.7fr 0.6fr;
     gap: 8px;
+    align-items: stretch;
+    min-height: 0;
   }
 
   .panel-chart,
   .panel-alarm,
   .panel-plant,
   .panel-hours,
-  .panel-emission {
+  .panel-emission,
+  .panel-weather,
+  .panel-battery,
+  .panel-map {
     padding: 11px;
+  }
+
+  /* panels in grid rows must fill the row height */
+  .middle-band > .panel,
+  .bottom-band > .panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .panel h2 {
     margin: 0;
-    font-size: 12px;
-    font-weight: 700;
-    color: #20394f;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1a3246;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
   }
 
   .panel-head {
@@ -412,42 +580,47 @@
   }
 
   .control-group button {
-    padding: 4px 7px;
-    color: #738a98;
-    font-size: 9px;
+    padding: 5px 9px;
+    color: #4b5e6b;
+    font-size: 11px;
+    font-weight: 600;
     line-height: 1;
   }
 
   .control-group button.active {
     background: #fff;
-    color: #1f3950;
-    font-weight: 700;
+    color: #17324a;
+    font-weight: 800;
   }
 
   .chart-date {
     display: flex;
-    width: 140px;
+    width: 150px;
     justify-content: space-between;
-    margin: 8px auto 0;
+    margin: 10px auto 0;
     border-radius: 999px;
-    background: #f3f8fa;
-    padding: 3px 8px;
-    color: #65808f;
-    font-size: 9px;
+    background: #f0f6f9;
+    padding: 4px 10px;
+    color: #4b5e6b;
+    font-size: 11px;
+    font-weight: 600;
   }
 
   .chart-box {
-    height: 168px;
-    margin-top: 4px;
+    flex: 1;
+    margin-top: 6px;
+    min-height: 0;
   }
 
   .legend-line {
     display: flex;
     justify-content: center;
-    gap: 6px;
-    color: #6a8391;
-    font-size: 9px;
-    margin-top: 1px;
+    align-items: center;
+    gap: 8px;
+    color: #4b5e6b;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 3px;
   }
 
   .legend-line span {
@@ -455,7 +628,7 @@
     width: 6px;
     margin-top: 3px;
     border-radius: 50%;
-    background: #ff8a1e;
+    background: #ff4f00;
   }
 
   .alarm-body {
@@ -520,7 +693,7 @@
   }
 
   .alarm {
-    background: #f3b13c;
+    background: #ff4f00;
   }
 
   .notice,
@@ -529,23 +702,28 @@
   }
 
   .status-list {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 6px;
     margin-top: 8px;
+    flex: 1;
   }
 
+  /* Status rows stretch evenly */
   .status-row {
     display: grid;
-    grid-template-columns: 16px 1fr auto;
+    grid-template-columns: 20px 1fr auto;
     align-items: center;
-    gap: 6px;
-    border-radius: 6px;
+    gap: 8px;
+    border-radius: 8px;
     border: 1px solid #edf2f5;
-    padding: 5px 7px;
-    color: #2b4357;
-    font-size: 10px;
+    padding: 7px 10px;
+    color: #17324a;
+    font-size: 12px;
+    font-weight: 600;
     text-align: left;
     background: #fcfefe;
+    flex: 1;
   }
 
   .status-row:hover {
@@ -554,18 +732,20 @@
   }
 
   .status-mark {
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1;
   }
 
   .status-label {
-    color: #607989;
+    color: #4b5e6b;
   }
 
   .bottom-band {
     display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-columns: 1fr 1fr 1.5fr;
     gap: 8px;
+    align-items: stretch;
+    min-height: 0;
   }
 
   .panel-head-simple {
@@ -575,45 +755,52 @@
   }
 
   .panel-head-simple span {
-    font-size: 10px;
-    color: #7a919f;
+    font-size: 11px;
+    color: #4b5e6b;
+    font-weight: 600;
   }
 
   .daily-grid {
-    margin-top: 8px;
-    display: grid;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
     gap: 6px;
+    flex: 1;
   }
 
   .daily-row {
     display: grid;
-    grid-template-columns: 18px 1fr;
-    gap: 6px;
+    grid-template-columns: 20px 1fr;
+    gap: 8px;
     align-items: center;
+    flex: 1;
   }
 
   .daily-row em {
     font-style: normal;
-    font-size: 10px;
-    color: #6a8391;
+    font-size: 12px;
+    font-weight: 700;
+    color: #4b5e6b;
     text-align: center;
   }
 
   .daily-main {
     display: grid;
-    gap: 3px;
+    gap: 4px;
   }
 
   .daily-line {
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    font-size: 10px;
-    color: #5f7887;
+    font-size: 12px;
+    font-weight: 500;
+    color: #3b5262;
   }
 
   .daily-line b {
-    color: #29445a;
+    color: #17324a;
+    font-weight: 700;
   }
 
   .bar {
@@ -626,7 +813,7 @@
   .bar span {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, #ffbe5f 0%, #ff8d1f 100%);
+    background: linear-gradient(90deg, #ff4f00 0%, #ff4f00 100%);
   }
 
   .panel-emission {
@@ -638,9 +825,13 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+    flex: 1;
   }
 
   .emission-grid div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     border-radius: 8px;
     border: 1px solid #e7edf1;
     background: #fbfeff;
@@ -649,15 +840,17 @@
 
   .emission-grid strong {
     display: block;
-    font-size: 16px;
-    color: #183349;
+    font-size: 20px;
+    font-weight: 800;
+    color: #17324a;
   }
 
   .emission-grid p {
-    margin-top: 4px;
-    font-size: 10px;
-    color: #6f8796;
-    line-height: 1.25;
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #4b5e6b;
+    line-height: 1.3;
   }
 
   @media (min-width: 1024px) {
@@ -705,4 +898,18 @@
       height: 220px;
     }
   }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #dce4e9;
+    border-radius: 4px;
+  }
 </style>
+
+
+

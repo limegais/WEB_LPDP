@@ -12,7 +12,7 @@
   const kpi = [
     { label: 'Active sessions', value: '14', tone: '#2a8bf2' },
     { label: 'Remote actions today', value: '39', tone: '#22b894' },
-    { label: 'Open faults', value: '5', tone: '#ff8f1f' },
+    { label: 'Open faults', value: '5', tone: '#ff4f00' },
     { label: 'SLA compliance', value: '98.1%', tone: '#6f7ef7' }
   ];
 
@@ -43,7 +43,7 @@
         name: 'Reference profile',
         type: 'line',
         smooth: true,
-        lineStyle: { color: '#ff9b2f', width: 2, type: 'dashed' },
+        lineStyle: { color: '#ff4f00', width: 2, type: 'dashed' },
         showSymbol: false,
         data: [0.1, 0.31, 0.88, 1.2, 1.08, 0.69, 0.21]
       }
@@ -51,15 +51,13 @@
   };
 
   const curveRows = [
-    { plant: 'PT. Indolakto C3 - Cicurug', peak: '1.12 MW', sunrise: '05:49', sunset: '17:52', variance: '+3.2%' },
-    { plant: 'PLTS Sumpal Camps', peak: '0.87 MW', sunrise: '05:48', sunset: '17:51', variance: '-1.1%' },
-    { plant: 'PT. Bogasari Flour Mills', peak: '0.73 MW', sunrise: '05:47', sunset: '17:51', variance: '+2.4%' }
+    { plant: 'PLTS Gedung 3 FT', peak: '1.12 MW', sunrise: '05:49', sunset: '17:52', variance: '+3.2%' },
+    { plant: 'PLTS di Indomaker', peak: '0.87 MW', sunrise: '05:48', sunset: '17:51', variance: '-1.1%' }
   ];
 
   const remoteRows = [
-    { device: '82-ZEI-003B', plant: 'PLTS Sumpal Camps', status: 'Online', mode: 'Read/Write', latency: '122 ms', updated: '18/Sep/2026 19:34' },
-    { device: 'INV-003', plant: 'PT. Indolakto C3', status: 'Online', mode: 'Read only', latency: '98 ms', updated: '18/Sep/2026 19:35' },
-    { device: 'SCB-003', plant: 'PT. Multi Kencana', status: 'Offline', mode: 'Locked', latency: '-', updated: '18/Sep/2026 18:58' }
+    { device: '82-ZEI-003B', plant: 'PLTS Gedung 3 FT', status: 'Online', mode: 'Read/Write', latency: '122 ms', updated: '18/Sep/2026 19:34' },
+    { device: 'INV-003', plant: 'PLTS di Indomaker', status: 'Online', mode: 'Read only', latency: '98 ms', updated: '18/Sep/2026 19:35' }
   ];
 
   const liveRows = [
@@ -100,8 +98,8 @@
 </svelte:head>
 
 <div class="min-h-screen bg-[#f4f7f8] text-[#17324a]">
-  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#e5ecef] bg-white">
-    <div class="flex h-14 items-center justify-center border-b border-[#f0f2f4] text-2xl text-[#ff991f]">☼</div>
+  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#0096d6] bg-[#00b7ff]">
+    <div class="flex h-14 items-center justify-center border-b border-[#0096d6] text-2xl text-white font-bold">☼</div>
     <nav class="mt-2 flex flex-1 flex-col gap-1 px-2">
       <a href="/dashboard" class="nav-button"><span class="nav-glyph">⌂</span><span>Home</span></a>
       <a href="/plant" class="nav-button"><span class="nav-glyph">▦</span><span>Plant</span></a>
@@ -345,24 +343,9 @@
     transform: translateX(0);
   }
 
-  .nav-button {
-    display: flex;
-    min-height: 49px;
-    width: 100%;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    border-radius: 5px;
-    color: #6e8492;
-    font-size: 9px;
-  }
+  .nav-button { display: flex; min-height: 54px; width: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px; font-weight: 600; }
 
-  .nav-button:hover,
-  .nav-button.current {
-    background: #fff7ed;
-    color: #fb8b20;
-  }
+  .nav-button:hover, .nav-button.current { background: rgba(0, 0, 0, 0.15); color: #ffffff; }
 
   .nav-glyph {
     font-size: 17px;
@@ -661,3 +644,6 @@
     }
   }
 </style>
+
+
+

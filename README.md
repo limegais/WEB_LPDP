@@ -29,12 +29,11 @@ ress-dashboard/
 
 Install:
 
-- Node.js 20+
 - Bun
 - Docker Desktop with WSL2 integration enabled
 - Git
 
-PowerShell may block `npx.ps1`; use `npm.cmd`/`npx.cmd` when needed.
+PowerShell command examples below are Bun-first to avoid npm/node runtime usage in daily development.
 
 ## Local development
 
@@ -72,8 +71,8 @@ bun run dev
 
 ```powershell
 cd C:\Users\ramad\Downloads\ress-dashboard\apps\frontend
-npm.cmd install
-npm.cmd run dev
+bun install
+bun run dev
 ```
 
 6. Open the application:
@@ -88,13 +87,13 @@ npm.cmd run dev
 From the repository root:
 
 ```powershell
-npm.cmd run infra:up
-npm.cmd run dev:backend
-npm.cmd run dev:frontend
-npm.cmd run db:generate
-npm.cmd run db:migrate
-npm.cmd run build:frontend
-npm.cmd run infra:down
+bun run infra:up
+bun run dev:backend
+bun run dev:frontend
+bun run db:generate
+bun run db:migrate
+bun run build:frontend
+bun run infra:down
 ```
 
 ## Backend API

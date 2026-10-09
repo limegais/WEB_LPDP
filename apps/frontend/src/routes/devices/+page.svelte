@@ -1,19 +1,19 @@
 <script lang="ts">
   let menuOpen = false;
   let activeMenu = 'Device list';
-  let deviceStatusTab = 'All (15)';
+  let deviceStatusTab = 'All (2)';
   let deviceTypeTab = 'All';
   let faultTab = 'Pending';
 
   const deviceMenus = ['Device list', 'Fault list', 'Settings', 'Firmware update'];
-  const statusTabs = ['All (15)', 'Normal (12)', 'Alarm (1)', 'Fault (1)', 'Offline (1)'];
+  const statusTabs = ['All (2)', 'Normal (2)', 'Alarm (0)', 'Fault (0)', 'Offline (0)'];
   const typeTabs = ['All', 'Inverter', 'Meter', 'SCB'];
 
   const deviceRows = [
     {
       id: 'INV-001',
       name: 'Inverter SUN2000-100KTL',
-      plant: 'PT. Indolakto C3 - Cicurug',
+      plant: 'PLTS Gedung 3 FT',
       type: 'Inverter',
       model: 'SUN2000-100KTL-M1',
       serial: '2102315678',
@@ -25,37 +25,9 @@
       sColor: '#22c59a'
     },
     {
-      id: 'INV-003',
-      name: 'Inverter SUN2000-100KTL #3',
-      plant: 'PT. Indolakto C3 - Cicurug',
-      type: 'Inverter',
-      model: 'SUN2000-100KTL-M1',
-      serial: '2102315680',
-      power: '63.20 kW',
-      yield: '1.80 MWh',
-      pr: '62.4%',
-      temp: '55 C',
-      status: 'Alarm',
-      sColor: '#ffae13'
-    },
-    {
-      id: 'INV-009',
-      name: 'Inverter SUN2000-100KTL',
-      plant: 'PT. Bogasari Flour Mills',
-      type: 'Inverter',
-      model: 'SUN2000-100KTL-M1',
-      serial: '2101200881',
-      power: '0 kW',
-      yield: '629.40 kWh',
-      pr: '-',
-      temp: '-',
-      status: 'Fault',
-      sColor: '#ff5a67'
-    },
-    {
       id: 'MET-001',
       name: 'Smart Energy Meter #1',
-      plant: 'PLTS Malaka P01',
+      plant: 'PLTS di Indomaker',
       type: 'Meter',
       model: 'DTSU666-H',
       serial: '3300112201',
@@ -65,20 +37,6 @@
       temp: '-',
       status: 'Normal',
       sColor: '#22c59a'
-    },
-    {
-      id: 'SCB-003',
-      name: 'String Combiner Box #3',
-      plant: 'PT. Multi Kencana Niagatama',
-      type: 'SCB',
-      model: 'JSB-16S',
-      serial: '440092203',
-      power: '-',
-      yield: '-',
-      pr: '-',
-      temp: '-',
-      status: 'Offline',
-      sColor: '#9ba9b2'
     }
   ];
 
@@ -87,7 +45,7 @@
       alarm: 'Grid power outage',
       type: 'Fault',
       code: '10',
-      plant: 'PLTS Sumpal Camps',
+      plant: 'PLTS Gedung 3 FT',
       device: '82-ZEI-003B',
       model: 'SG50CX',
       time: '18/Sep/2026 06:17:11'
@@ -96,7 +54,7 @@
       alarm: 'Grid power outage',
       type: 'Fault',
       code: '10',
-      plant: 'PLTS Sumpal Camps',
+      plant: 'PLTS di Indomaker',
       device: '82-ZEI-003A',
       model: 'SG50CX',
       time: '18/Sep/2026 06:16:59'
@@ -143,8 +101,8 @@
 </svelte:head>
 
 <div class="min-h-screen bg-[#f4f7f8] text-[#17324a]">
-  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#e5ecef] bg-white">
-    <div class="flex h-14 items-center justify-center border-b border-[#f0f2f4] text-2xl text-[#ff991f]">☼</div>
+  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#0096d6] bg-[#00b7ff]">
+    <div class="flex h-14 items-center justify-center border-b border-[#0096d6] text-2xl text-white font-bold">☼</div>
     <nav class="mt-2 flex flex-1 flex-col gap-1 px-2">
       {#each navigation as item}
         <a href={item.href} class:current={item.label === 'Device'} class="nav-button" title={item.label}>
@@ -406,24 +364,9 @@
     transform: translateX(0);
   }
 
-  .nav-button {
-    display: flex;
-    min-height: 49px;
-    width: 100%;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    border-radius: 5px;
-    color: #6e8492;
-    font-size: 9px;
-  }
+  .nav-button { display: flex; min-height: 54px; width: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px; font-weight: 600; }
 
-  .nav-button:hover,
-  .nav-button.current {
-    background: #fff7ed;
-    color: #fb8b20;
-  }
+  .nav-button:hover, .nav-button.current { background: rgba(0, 0, 0, 0.15); color: #ffffff; }
 
   .nav-glyph {
     font-size: 17px;
@@ -662,7 +605,7 @@
     place-items: center;
     border-radius: 5px;
     background: #fff5e8;
-    color: #ff8f1f;
+    color: #ff4f00;
     font-size: 12px;
   }
 
@@ -871,3 +814,6 @@
     }
   }
 </style>
+
+
+

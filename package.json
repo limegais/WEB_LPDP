@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:frontend": "npm --prefix apps/frontend run dev",
-    "build:frontend": "npm --prefix apps/frontend run build",
+    "dev:frontend": "bun --cwd apps/frontend run dev",
+    "build:frontend": "bun --cwd apps/frontend run build",
     "dev:backend": "bun --cwd apps/backend run dev",
     "db:generate": "bun --cwd apps/backend run db:generate",
     "db:migrate": "bun --cwd apps/backend run db:migrate",

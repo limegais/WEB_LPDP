@@ -16,3 +16,51 @@ body {
   background: radial-gradient(circle at 0% 0%, #ecfeff 0%, var(--bg) 45%);
   color: var(--text);
 }
+
+/* Global Orange Header Theme */
+main > header {
+  background-color: #ff4f00 !important;
+  border-bottom-color: #d44200 !important;
+}
+
+main > header p, 
+main > header span, 
+main > header button,
+main > header .icon-button,
+main > header strong,
+main > header .greeting,
+main > header .date-label {
+  color: #ffffff !important;
+}
+
+main > header select {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+main > header select option {
+  color: #000000 !important;
+}
+
+/* User avatar */
+main > header .h-8.w-8.rounded-full,
+main > header .avatar {
+  background-color: #ffffff !important;
+  color: #ff4f00 !important;
+}
+
+/* Notification badge */
+main > header .notif-dot,
+main > header button > span.absolute {
+  background-color: #00b7ff !important;
+  color: #ffffff !important;
+}
+
+/* Role badge */
+main > header .rounded.px-2 {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+

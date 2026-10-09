@@ -2,7 +2,7 @@
   let menuOpen = false;
   let activeMenu = 'Push notifications';
   let notificationTab = 'Smart alarm analysis settings';
-  let selectedPlant = 'UNPAD (Medical Faculty)';
+  let selectedPlant = 'PLTS Gedung 3 FT';
   let alarmFilter = 'All';
   let alarmSearch = '';
   let faqSearch = '';
@@ -73,8 +73,8 @@
 <svelte:head><title>Support | SolarCloud</title></svelte:head>
 
 <div class="min-h-screen bg-[#f4f7f8] text-[#17324a]">
-  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#e5ecef] bg-white">
-    <div class="flex h-14 items-center justify-center border-b border-[#f0f2f4] text-2xl text-[#ff991f]">☼</div>
+  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#0096d6] bg-[#00b7ff]">
+    <div class="flex h-14 items-center justify-center border-b border-[#0096d6] text-2xl text-white font-bold">☼</div>
     <nav class="mt-2 flex flex-1 flex-col gap-1 px-2">
       {#each navigation as item}
         <a href={item.href} class="nav-button" title={item.label}><span class="nav-glyph">{item.icon}</span><span>{item.label}</span></a>
@@ -114,7 +114,7 @@
               {/each}
             </div>
             <div class="filter-bar">
-              <select bind:value={selectedPlant}><option>UNPAD (Medical Faculty)</option><option>All plants</option><option>PLTS Sumpal Camps</option></select>
+              <select bind:value={selectedPlant}><option>PLTS Gedung 3 FT</option><option>All plants</option><option>PLTS di Indomaker</option></select>
               <select bind:value={alarmFilter}><option>All</option><option>Plant</option><option>String</option><option>Inverter</option><option>Combiner box</option><option>General information</option></select>
               <input bind:value={alarmSearch} placeholder="Alarm name" />
               <button class="search-btn" on:click={() => (savedMessage = `${filteredAlarms.length} alarm rules found`)}>Search</button>
@@ -140,6 +140,7 @@
               <button on:click={() => (savedMessage = 'Registration guide opened')}><span>♙</span><b>New user registration</b></button>
               <button on:click={() => (savedMessage = 'Password guide opened')}><span>♧</span><b>Change password</b></button>
               <button on:click={() => (savedMessage = 'User manual opened')}><span>▣</span><b>User manual</b></button>
+              <a href="/owner-hub"><span>◎</span><b>Owner information hub</b></a>
             </div>
             <div class="faq-head"><h2>FAQs</h2><span>{filteredFaqs.length} articles</span></div>
             <div class="faq-grid">
@@ -157,7 +158,46 @@
 </div>
 
 <style>
-  .sidebar{transform:translateX(-100%);transition:transform .2s ease}.sidebar.open{transform:translateX(0)}.nav-button{display:flex;min-height:49px;width:100%;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:5px;color:#6e8492;font-size:9px}.nav-button:hover,.nav-button.current{background:#fff7ed;color:#fb8b20}.nav-glyph{font-size:17px;line-height:17px}.icon-button{display:grid;height:30px;width:30px;place-items:center;border-radius:5px;color:#6c8190}.icon-button:hover{background:#edf3f4}
-  .support-frame{display:grid;grid-template-columns:185px minmax(0,1fr);min-height:calc(100vh - 86px);border:1px solid #e7edf0;border-radius:12px;background:#fff;overflow:hidden}.subnav{border-right:1px solid #e8eef1;background:linear-gradient(180deg,#fbfdfe,#f4f8fa);padding:18px 10px}.subnav h1{margin:0 4px;font-size:17px;color:#203b52}.subnav-list{display:grid;gap:5px;margin-top:13px}.subnav-list button{text-align:left;border-radius:7px;padding:8px 7px;color:#667d8c;font-size:11px}.subnav-list button:hover,.subnav-list button.active{background:#e9e9eb;color:#1d354b;font-weight:700}.support-content{padding:16px 14px}.section-tabs{display:flex;gap:28px;border-bottom:1px solid #edf1f3}.section-tabs button{position:relative;padding:0 0 10px;color:#80919d;font-size:11px}.section-tabs button.active{color:#1c344b;font-weight:700}.section-tabs button.active:after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#1f3548}.filter-bar{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.filter-bar select,.filter-bar input{height:34px;min-width:160px;border:1px solid #edf0f2;border-radius:6px;background:#fafafa;padding:0 10px;color:#627987;font-size:11px}.filter-bar input{min-width:150px}.search-btn{height:34px;border:1px solid #aebcc4;border-radius:6px;padding:0 15px;background:white;color:#1b354a;font-size:11px}.table-card{overflow-x:auto;border-top:1px solid #edf1f3}.table-card table{min-width:760px}.table-card th{padding:11px 10px;border-bottom:1px solid #e8edf0;color:#607786;font-size:10px}.table-card td{padding:11px 10px;border-bottom:1px solid #edf1f3;color:#294458;font-size:11px}.status-text{color:#647b89}.status-text.open-status{color:#2c678e}.edit-btn{color:#345269;font-size:16px}.empty{text-align:center!important;color:#8698a3!important;padding:30px!important}.help-head{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}.help-head h2,.faq-head h2{margin:0;color:#1e374e;font-size:15px}.help-head p{margin:4px 0 0;color:#80929d;font-size:11px}.help-search{display:flex;align-items:center;gap:7px;width:230px;border:1px solid #e5edf0;border-radius:7px;padding:0 10px;height:34px;color:#8ba0ab}.help-search input{width:100%;border:0;outline:0;font-size:11px}.quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:20px 0 30px}.quick-grid button{display:flex;flex-direction:column;align-items:center;gap:7px;color:#345b80;font-size:11px}.quick-grid button span{font-size:25px;color:#2b526f}.quick-grid button:hover{color:#f28d24}.faq-head{display:flex;align-items:center;gap:10px;margin-bottom:13px}.faq-head span{color:#8a9ba5;font-size:10px}.faq-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}.faq-group h3{margin:0 0 9px;color:#637987;font-size:11px;font-weight:500}.faq-item{display:grid;grid-template-columns:14px 1fr 10px;gap:5px;width:100%;padding:7px 0;text-align:left;color:#3971a8;font-size:10px}.faq-item>span{display:grid;place-items:center;width:12px;height:12px;border:1px solid #3971a8;border-radius:50%;font-size:8px}.faq-item i{font-style:normal}.faq-item strong{font-weight:500}.faq-item p{margin:6px 0 0;color:#718794;line-height:1.5}.faq-item.expanded{color:#1c496d}.toast{position:fixed;right:22px;bottom:22px;border-radius:7px;background:#1f3a52;color:#fff;padding:10px 14px;font-size:11px;box-shadow:0 8px 20px #17324a2b}
+  .sidebar{transform:translateX(-100%);transition:transform .2s ease}.sidebar.open{transform:translateX(0)}.nav-button { display: flex; min-height: 54px; width: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px; font-weight: 600; }.nav-button:hover,.nav-button.current{background:#fff7ed;color:#ff4f00}.nav-glyph{font-size:17px;line-height:17px}.icon-button{display:grid;height:30px;width:30px;place-items:center;border-radius:5px;color:#6c8190}.icon-button:hover{background:#edf3f4}
+  .support-frame{display:grid;grid-template-columns:185px minmax(0,1fr);min-height:calc(100vh - 86px);border:1px solid #e7edf0;border-radius:12px;background:#fff;overflow:hidden}.subnav{border-right:1px solid #e8eef1;background:linear-gradient(180deg,#fbfdfe,#f4f8fa);padding:18px 10px}.subnav h1{margin:0 4px;font-size:17px;color:#203b52}.subnav-list{display:grid;gap:5px;margin-top:13px}.subnav-list button{text-align:left;border-radius:7px;padding:8px 7px;color:#667d8c;font-size:11px}.subnav-list button:hover,.subnav-list button.active{background:#e9e9eb;color:#1d354b;font-weight:700}.support-content{padding:16px 14px}.section-tabs{display:flex;gap:28px;border-bottom:1px solid #edf1f3}.section-tabs button{position:relative;padding:0 0 10px;color:#80919d;font-size:11px}.section-tabs button.active{color:#1c344b;font-weight:700}.section-tabs button.active:after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#1f3548}.filter-bar{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.filter-bar select,.filter-bar input{height:34px;min-width:160px;border:1px solid #edf0f2;border-radius:6px;background:#fafafa;padding:0 10px;color:#627987;font-size:11px}.filter-bar input{min-width:150px}.search-btn{height:34px;border:1px solid #aebcc4;border-radius:6px;padding:0 15px;background:white;color:#1b354a;font-size:11px}.table-card{overflow-x:auto;border-top:1px solid #edf1f3}.table-card table{min-width:760px}.table-card th{padding:11px 10px;border-bottom:1px solid #e8edf0;color:#607786;font-size:10px}.table-card td{padding:11px 10px;border-bottom:1px solid #edf1f3;color:#294458;font-size:11px}.status-text{color:#647b89}.status-text.open-status{color:#00b7ff}.edit-btn{color:#345269;font-size:16px}.empty{text-align:center!important;color:#8698a3!important;padding:30px!important}.help-head{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}.help-head h2,.faq-head h2{margin:0;color:#1e374e;font-size:15px}.help-head p{margin:4px 0 0;color:#80929d;font-size:11px}.help-search{display:flex;align-items:center;gap:7px;width:230px;border:1px solid #e5edf0;border-radius:7px;padding:0 10px;height:34px;color:#8ba0ab}.help-search input{width:100%;border:0;outline:0;font-size:11px}.quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:20px 0 30px}.quick-grid button{display:flex;flex-direction:column;align-items:center;gap:7px;color:#00b7ff;font-size:11px}.quick-grid button span{font-size:25px;color:#00b7ff}.quick-grid button:hover{color:#ff4f00}.faq-head{display:flex;align-items:center;gap:10px;margin-bottom:13px}.faq-head span{color:#8a9ba5;font-size:10px}.faq-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}.faq-group h3{margin:0 0 9px;color:#637987;font-size:11px;font-weight:500}.faq-item{display:grid;grid-template-columns:14px 1fr 10px;gap:5px;width:100%;padding:7px 0;text-align:left;color:#00b7ff;font-size:10px}.faq-item>span{display:grid;place-items:center;width:12px;height:12px;border:1px solid #00b7ff;border-radius:50%;font-size:8px}.faq-item i{font-style:normal}.faq-item strong{font-weight:500}.faq-item p{margin:6px 0 0;color:#718794;line-height:1.5}.faq-item.expanded{color:#00b7ff}.toast{position:fixed;right:22px;bottom:22px;border-radius:7px;background:#1f3a52;color:#fff;padding:10px 14px;font-size:11px;box-shadow:0 8px 20px #17324a2b}
   @media (min-width:1024px){.sidebar{transform:translateX(0)}}@media (max-width:1000px){.support-frame{grid-template-columns:1fr}.subnav{border-right:0;border-bottom:1px solid #e8eef1}.subnav-list{grid-template-columns:repeat(2,1fr)}.faq-grid{grid-template-columns:repeat(2,1fr)}}@media (max-width:600px){.faq-grid{grid-template-columns:1fr}.help-head{flex-direction:column}.help-search{width:100%}}
 </style>
+
+<style>
+  .quick-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .quick-grid a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    color: #00b7ff;
+    font-size: 11px;
+  }
+
+  .quick-grid a span {
+    font-size: 25px;
+    color: #00b7ff;
+  }
+
+  .quick-grid a:hover {
+    color: #ff4f00;
+  }
+
+  @media (max-width: 1100px) {
+    .quick-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .quick-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+
+

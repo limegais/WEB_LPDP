@@ -1,74 +1,35 @@
 <script lang="ts">
   let menuOpen = false;
-  let activeTab = 'All (20)';
+  let activeTab = 'All (2)';
 
-  const tabs = ['All (20)', 'Following (0)', 'Normal (14)', 'Fault (2)', 'Offline (5)'];
+  const tabs = ['All (2)', 'Following (0)', 'Normal (2)', 'Fault (0)', 'Offline (0)'];
 
   const rows = [
     {
-      name: 'UNPAD (Fakultas Kedokteran)',
-      location: 'Hegarmanah, Jatinangor',
-      status: 'Fault (2)',
-      statusColor: '#ff5a67',
+      name: 'PLTS Gedung 3 FT',
+      location: 'Jakarta',
+      status: 'Normal',
+      statusColor: '#22c59a',
       type: 'C&I PV',
       installed: '123.12 kWp',
-      realtime: '-',
-      yieldToday: '-',
+      realtime: '64.52 kW',
+      yieldToday: '11.00 kWh',
       monthly: '2.19 MWh',
       annual: '2.19 MWh',
-      pr: '-'
+      pr: '80.84%'
     },
     {
-      name: 'UNPAD (Vokasi)',
-      location: 'Jatinangor, Sumedang',
-      status: 'Offline device',
-      statusColor: '#9ba9b2',
+      name: 'PLTS di Indomaker',
+      location: 'Jakarta',
+      status: 'Normal',
+      statusColor: '#22c59a',
       type: 'C&I PV',
       installed: '86.40 kWp',
-      realtime: '-',
-      yieldToday: '-',
-      monthly: '1.50 MWh',
-      annual: '1.50 MWh',
-      pr: '-'
-    },
-    {
-      name: 'PLTS Malaka P01',
-      location: 'Jl. Nusa Indah VI No. 35',
-      status: 'Normal',
-      statusColor: '#22c59a',
-      type: 'C&I PV',
-      installed: '7.63 kWp',
       realtime: '2.66 kW',
       yieldToday: '11.00 kWh',
-      monthly: '227.90 kWh',
-      annual: '2.16 MWh',
-      pr: '80.84%'
-    },
-    {
-      name: 'PT. Indolakto C3 - Cicurug',
-      location: 'Paracahna, Sukabumi',
-      status: 'Normal',
-      statusColor: '#22c59a',
-      type: 'C&I PV',
-      installed: '812.30 kWp',
-      realtime: '594.92 kW',
-      yieldToday: '2.67 MWh',
-      monthly: '62.04 MWh',
-      annual: '350.26 MWh',
-      pr: '80.84%'
-    },
-    {
-      name: 'Superindo (SHI)',
-      location: 'Sukaraja, Kabupaten Bogor',
-      status: 'Normal',
-      statusColor: '#22c59a',
-      type: 'C&I PV',
-      installed: '95.00 kWp',
-      realtime: '64.52 kW',
-      yieldToday: '275.00 kWh',
-      monthly: '6.51 MWh',
-      annual: '88.76 MWh',
-      pr: '80.84%'
+      monthly: '1.50 MWh',
+      annual: '1.50 MWh',
+      pr: '75.00%'
     }
   ];
 </script>
@@ -78,8 +39,8 @@
 </svelte:head>
 
 <div class="min-h-screen bg-[#f4f7f8] text-[#17324a]">
-  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#e5ecef] bg-white">
-    <div class="flex h-14 items-center justify-center border-b border-[#f0f2f4] text-2xl text-[#ff991f]">*</div>
+  <aside class:open={menuOpen} class="sidebar fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#0096d6] bg-[#00b7ff]">
+    <div class="flex h-14 items-center justify-center border-b border-[#0096d6] text-2xl text-white font-bold">☼</div>
     <nav class="mt-2 flex flex-1 flex-col gap-1 px-2">
       <a href="/dashboard" class="nav-button" title="Home"><span class="nav-glyph">⌂</span><span>Home</span></a>
       <a href="/plant" class="nav-button current" title="Plants"><span class="nav-glyph">▦</span><span>Plants</span></a>
@@ -157,7 +118,7 @@
                     <div class="flex items-start gap-3">
                       <span class="thumb"></span>
                       <div>
-                        <p class="font-semibold">{row.name}</p>
+                        <a href={`/plant/${encodeURIComponent(row.name)}`} class="font-semibold hover:text-[#11a37f] hover:underline" title={`View details for ${row.name}`}>{row.name}</a>
                         <p class="text-[11px] text-[#8ca0ad]">{row.location}</p>
                       </div>
                     </div>
@@ -178,7 +139,7 @@
         </div>
 
         <footer class="flex items-center justify-between px-4 py-3 text-xs text-[#89a0af]">
-          <p>Showing 12 of 20 plants</p>
+          <p>Showing 2 of 2 plants</p>
           <div class="flex items-center gap-1">
             <button class="chip">‹</button>
             <button class="chip chip-active">1</button>
@@ -194,12 +155,12 @@
 <style>
   .sidebar { transform: translateX(-100%); transition: transform .2s ease; }
   .sidebar.open { transform: translateX(0); }
-  .nav-button { display:flex; min-height:49px; width:100%; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:5px; color:#6e8492; font-size:9px; }
-  .nav-button:hover, .nav-button.current { background:#fff7ed; color:#fb8b20; }
+  .nav-button { display: flex; min-height: 54px; width: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; color: rgba(255, 255, 255, 0.7); font-size: 11px; font-weight: 600; }
+  .nav-button:hover, .nav-button.current { background: rgba(0, 0, 0, 0.15); color: #ffffff; }
   .nav-glyph { font-size:17px; line-height:17px; }
   .icon-button { display:grid; height:30px; width:30px; place-items:center; border-radius:5px; color:#6c8190; }
   .icon-button:hover { background:#edf3f4; }
-  .eyebrow { color:#fb8b20; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .eyebrow { color:#ff4f00; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
   .panel { border:1px solid #e8edef; border-radius:10px; background:white; }
   .toolbar-input { height:35px; min-width:145px; border:1px solid #e7eef1; border-radius:8px; padding:0 11px; color:#6c8292; font-size:12px; background:#f9fbfc; }
   .toolbar-input.search { display:flex; align-items:center; justify-content:space-between; min-width:280px; }
@@ -208,13 +169,16 @@
   .toolbar-btn.primary { color:white; background:#1f3a52; border-color:#1f3a52; }
   .status-tab { position:relative; color:#778d9c; }
   .status-tab.active-tab { color:#1f3a52; font-weight:700; }
-  .status-tab.active-tab::after { content:''; position:absolute; left:0; right:0; bottom:-9px; height:2px; background:#ff9224; }
+  .status-tab.active-tab::after { content:''; position:absolute; left:0; right:0; bottom:-9px; height:2px; background:#ff4f00; }
   .thumb { width:26px; height:26px; border-radius:3px; background:linear-gradient(135deg,#cad8de,#8bb2bf); }
   .status-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:#607b8f; }
   .status-pill::before { content:''; width:6px; height:6px; border-radius:999px; background:var(--dot); }
   .chip { min-width:24px; height:24px; border:1px solid #e4ecef; border-radius:6px; font-size:11px; color:#8399a7; }
-  .chip-active { background:#ff972e; border-color:#ff972e; color:white; }
+  .chip-active { background:#ff4f00; border-color:#ff4f00; color:white; }
   @media (min-width: 1024px) {
     .sidebar { transform: translateX(0); }
   }
 </style>
+
+
+
