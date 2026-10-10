@@ -27,6 +27,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./apps/frontend/build:/var/www/frontend:ro
     depends_on:
       - postgres
       - mqtt
