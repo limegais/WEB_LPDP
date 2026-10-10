@@ -280,18 +280,18 @@
 
           <article class="panel panel-weather flex flex-col overflow-hidden">
             <div class="panel-head-simple mb-2">
-              <h2 class="!text-[12px] !text-[#4b5e6b] font-bold">Weather & Irradiance</h2>
+              <h2 class="!text-[13px] !text-[#4b5e6b] font-bold">Weather & Irradiance</h2>
             </div>
             
             {#if selectedPlant === 'All Plants'}
               <div class="flex flex-col flex-1">
                 {#each Object.entries(plantWeatherData).filter(([k]) => k !== 'All Plants') as [name, w]}
                   <div class="flex justify-between items-center flex-1 border-b border-[#edf2f5] last:border-0 px-1 py-1">
-                    <span class="truncate w-[55%] text-[11px] text-[#2b4357] font-medium" title={name}>{name}</span>
+                    <span class="truncate w-[55%] text-[12px] text-[#2b4357] font-medium" title={name}>{name}</span>
                     <div class="flex gap-2 items-center text-right flex-shrink-0">
-                      <span title={w.status} class="text-[15px]">{w.icon}</span>
-                      <span class="text-[12px] text-[#17324a] font-bold">{w.temp}</span>
-                      <span class="text-[10px] text-[#4b5e6b]">{w.irradiance}</span>
+                      <span title={w.status} class="text-[16px]">{w.icon}</span>
+                      <span class="text-[13px] text-[#17324a] font-bold">{w.temp}</span>
+                      <span class="text-[11px] text-[#4b5e6b]">{w.irradiance}</span>
                     </div>
                   </div>
                 {/each}
@@ -300,9 +300,9 @@
               <div class="flex-1 flex flex-col justify-center items-center text-center">
                 <div class="text-4xl text-[#ff4f00] my-2">{weather.icon}</div>
                 <strong class="text-lg text-[#17324a]">{weather.status}</strong>
-                <div class="flex justify-between w-full px-4 mt-6 text-[12px] text-[#3b5262] font-medium">
-                  <span>Temp: <b class="text-[#17324a] text-[13px]">{weather.temp}</b></span>
-                  <span>Irr: <b class="text-[#17324a] text-[13px]">{weather.irradiance}</b></span>
+                <div class="flex justify-between w-full px-4 mt-6 text-[13px] text-[#3b5262] font-medium">
+                  <span>Temp: <b class="text-[#17324a] text-[14px]">{weather.temp}</b></span>
+                  <span>Irr: <b class="text-[#17324a] text-[14px]">{weather.irradiance}</b></span>
                 </div>
               </div>
             {/if}
@@ -310,22 +310,22 @@
 
           <article class="panel panel-battery flex flex-col overflow-hidden">
             <div class="panel-head-simple mb-2">
-              <h2 class="!text-[12px] !text-[#4b5e6b] font-bold">RESS Battery Status</h2>
+              <h2 class="!text-[13px] !text-[#4b5e6b] font-bold">RESS Battery Status</h2>
             </div>
             
             {#if selectedPlant === 'All Plants'}
               <div class="flex flex-col flex-1">
                 {#each Object.entries(plantBatteryData).filter(([k]) => k !== 'All Plants') as [name, b]}
                   <div class="flex justify-between items-center flex-1 border-b border-[#edf2f5] last:border-0 px-1 py-1">
-                    <span class="truncate w-[40%] text-[11px] text-[#2b4357] font-medium" title={name}>{name}</span>
+                    <span class="truncate w-[40%] text-[12px] text-[#2b4357] font-medium" title={name}>{name}</span>
                     <div class="flex-1 mx-2">
-                      <div class="h-2 rounded-full bg-[#e9f0f3] overflow-hidden">
+                      <div class="h-[10px] rounded-full bg-[#e9f0f3] overflow-hidden">
                         <div class="h-full rounded-full" style="width: {b.soc}%; background: {b.color}"></div>
                       </div>
                     </div>
                     <div class="flex gap-1.5 items-center flex-shrink-0">
-                      <span class="font-bold text-[12px]" style="color: {b.color}">{b.soc}%</span>
-                      <span class="text-[10px] text-[#4b5e6b] font-medium">{b.status}</span>
+                      <span class="font-bold text-[13px]" style="color: {b.color}">{b.soc}%</span>
+                      <span class="text-[11px] text-[#4b5e6b] font-medium">{b.status}</span>
                     </div>
                   </div>
                 {/each}
@@ -335,13 +335,13 @@
                 <div class="text-4xl my-2" style="color: {battery.color}">🔋</div>
                 <strong class="text-lg text-[#17324a]">{battery.soc}% SoC</strong>
                 <div class="w-full px-4 mt-4">
-                  <div class="h-2.5 rounded-full bg-[#e9f0f3] overflow-hidden">
+                  <div class="h-3 rounded-full bg-[#e9f0f3] overflow-hidden">
                     <div class="h-full rounded-full" style="width: {battery.soc}%; background: {battery.color}"></div>
                   </div>
                 </div>
-                <div class="flex justify-between w-full px-4 mt-4 text-[12px] text-[#3b5262] font-medium">
+                <div class="flex justify-between w-full px-4 mt-4 text-[13px] text-[#3b5262] font-medium">
                   <span style="color: {battery.color}">{battery.status}</span>
-                  <span><b class="text-[#17324a] text-[13px]">{battery.power}</b></span>
+                  <span><b class="text-[#17324a] text-[14px]">{battery.power}</b></span>
                 </div>
               </div>
             {/if}
@@ -526,7 +526,7 @@
 
   .metric-card {
     border-right: 1px solid #e6edf0;
-    padding: 12px 14px;
+    padding: 8px 12px;
   }
 
   .metric-card:last-child {
@@ -535,29 +535,29 @@
 
   .metric-card p {
     color: #546977;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.2;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
   }
 
   .metric-card strong {
     display: block;
-    margin-top: 8px;
-    font-size: 32px;
+    margin-top: 4px;
+    font-size: 24px;
     line-height: 1.15;
-    font-weight: 400;
+    font-weight: 500;
     color: #17324a;
     letter-spacing: -0.02em;
   }
 
   .metric-card--revenue strong {
-    font-size: 26px;
+    font-size: 20px;
   }
 
   .target-bar {
-    margin-top: 8px;
+    margin-top: 6px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -617,7 +617,7 @@
 
   .panel h2 {
     margin: 0;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
     color: #1a3246;
     text-transform: uppercase;
@@ -641,7 +641,7 @@
   .control-group button {
     padding: 5px 11px;
     color: #4b5e6b;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     line-height: 1;
   }
@@ -720,7 +720,7 @@
   }
 
   .alarm-time {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     color: #4b5e6b;
     display: block;
@@ -728,7 +728,7 @@
 
   .alarm-msg {
     margin-top: 2px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: #17324a;
     line-height: 1.35;
@@ -737,7 +737,7 @@
   .alarm-view-all {
     padding-top: 8px;
     margin-top: auto;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     text-align: center;
     color: #00b7ff;
@@ -830,14 +830,14 @@
   /* Status rows stretch evenly */
   .status-row {
     display: grid;
-    grid-template-columns: 22px 1fr auto;
+    grid-template-columns: 24px 1fr auto;
     align-items: center;
     gap: 8px;
     border-radius: 8px;
     border: 1px solid #edf2f5;
-    padding: 9px 10px;
+    padding: 10px 11px;
     color: #17324a;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     text-align: left;
     background: #fcfefe;
@@ -857,11 +857,11 @@
 
   .status-label {
     color: #4b5e6b;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .status-row b {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 400;
     color: #17324a;
   }
@@ -904,7 +904,7 @@
 
   .daily-row em {
     font-style: normal;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 400;
     color: #ff4f00;
     text-align: center;
@@ -919,7 +919,7 @@
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: #3b5262;
   }
@@ -927,7 +927,7 @@
   .daily-line b {
     color: #17324a;
     font-weight: 400;
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .bar {
@@ -980,7 +980,7 @@
 
   .emission-item strong {
     display: block;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 400;
     color: #17324a;
     letter-spacing: -0.02em;
@@ -988,7 +988,7 @@
 
   .emission-item p {
     margin-top: 4px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: #4b5e6b;
     line-height: 1.3;

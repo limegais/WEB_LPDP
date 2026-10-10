@@ -1,0 +1,50 @@
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Sat, 10 Oct 2026 08:15:49 GMT
+Content-Type: text/html
+Content-Length: 1544
+Last-Modified: Sat, 10 Oct 2026 08:12:25 GMT
+Connection: keep-alive
+ETag: "6ac9f369-608"
+Accept-Ranges: bytes
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="/_app/immutable/entry/start.Da46dFxQ.js" rel="modulepreload">
+		<link href="/_app/immutable/entry/payload.DSmR2FwN.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/uBIymjUX.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/B8D9Pqgc.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/D39kFlr2.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/DlfkfrVv.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/UY_FSgIb.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/PE_MFoyr.js" rel="modulepreload">
+		<link href="/_app/immutable/entry/app.UkDow7Eh.js" rel="modulepreload">
+		<link href="/_app/immutable/nodes/0.DUIOAGVv.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/BdFF_CyW.js" rel="modulepreload">
+		
+		<link href="/_app/immutable/assets/0.CU_eq_CX.css" rel="stylesheet">
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">
+			<script>
+				{
+					__sveltekit_4wrtcm = {
+						base: "",
+						version: "1791619883321"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					import("/_app/immutable/entry/start.Da46dFxQ.js").then(async (kit) => {
+						kit.init(__sveltekit_4wrtcm);
+						const app = await import("/_app/immutable/entry/app.UkDow7Eh.js");
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
+  </body>
+</html>
