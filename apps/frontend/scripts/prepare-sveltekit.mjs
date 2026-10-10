@@ -10,5 +10,7 @@ if (existsSync(generatedDir)) {
   rmSync(generatedDir, { recursive: true, force: true });
 }
 
-const svelteKitBin = resolve(projectRoot, 'node_modules', '@sveltejs', 'kit', 'svelte-kit.js');
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const svelteKitBin = require.resolve('@sveltejs/kit/svelte-kit.js');
 execFileSync(process.execPath, [svelteKitBin, 'sync'], { cwd: projectRoot, stdio: 'inherit' });
