@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare:sveltekit": "bun scripts/prepare-sveltekit.mjs",
+    "prepare:sveltekit": "svelte-kit sync",
     "dev": "bun run prepare:sveltekit && vite dev",
     "build": "bun run prepare:sveltekit && vite build",
     "preview": "vite preview"
