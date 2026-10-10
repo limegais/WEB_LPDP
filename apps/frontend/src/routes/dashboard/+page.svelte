@@ -535,7 +535,7 @@
 
   .metric-card p {
     color: #546977;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     line-height: 1.3;
     text-transform: uppercase;
@@ -545,7 +545,7 @@
   .metric-card strong {
     display: block;
     margin-top: 8px;
-    font-size: 22px;
+    font-size: 32px;
     line-height: 1.15;
     font-weight: 400;
     color: #17324a;
@@ -553,7 +553,7 @@
   }
 
   .metric-card--revenue strong {
-    font-size: 18px;
+    font-size: 26px;
   }
 
   .target-bar {
