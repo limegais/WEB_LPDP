@@ -62,18 +62,18 @@
   ];
 
   const summaries = [
-    { label: 'Yield today (MWh)', value: '7.83', target: '92%' },
-    { label: 'Yield this month (MWh)', value: '169.93', target: '85%' },
-    { label: 'Total yield (GWh)', value: '2.60', target: '' },
-    { label: 'Real-time power (W)', value: '0', target: '' },
-    { label: 'Installed power (MWp)', value: '3.69', target: '' }
+    { label: 'YIELD TODAY (MWH)', value: '7.83', target: '92%' },
+    { label: 'YIELD THIS MONTH (MWH)', value: '169.93', target: '85%' },
+    { label: 'TOTAL YIELD (GWH)', value: '2.60', target: '' },
+    { label: 'REAL-TIME POWER (W)', value: '0', target: '' },
+    { label: 'INSTALLED POWER (MWP)', value: '3.69', target: '' }
   ];
 
   const revenue = [
-    { label: 'Revenue today (IDR)', value: '8,176,669.87', target: '95%' },
-    { label: 'This month (IDR)', value: '167,313,597.75', target: '88%' },
-    { label: 'This year (IDR)', value: '2,145,032,276.78', target: '' },
-    { label: 'Total revenue (IDR)', value: '2,540,321,913.90', target: '' }
+    { label: 'REVENUE TODAY (IDR)', value: '8,176,669.87', target: '95%' },
+    { label: 'THIS MONTH (IDR)', value: '167,313,597.75', target: '88%' },
+    { label: 'THIS YEAR (IDR)', value: '2,145,032,276.78', target: '' },
+    { label: 'TOTAL REVENUE (IDR)', value: '2,540,321,913.90', target: '' }
   ];
 
   const plantStatuses = [
@@ -91,22 +91,30 @@
   ];
 
   const powerOption = {
-    grid: { top: 20, right: 14, bottom: 26, left: 30 },
-    tooltip: { trigger: 'axis' },
+    grid: { top: 28, right: 20, bottom: 36, left: 48 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1a3246',
+      borderColor: '#1a3246',
+      textStyle: { color: '#fff', fontSize: 13 },
+      formatter: (p: any[]) => `<b>${p[0].name}</b><br/>Power: <b>${p[0].value} MW</b>`
+    },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:00'],
+      data: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '23:00'],
       axisLine: { lineStyle: { color: '#dce4e9' } },
-      axisLabel: { color: '#7d909d', fontSize: 9 }
+      axisLabel: { color: '#7d909d', fontSize: 12, margin: 10 }
     },
     yAxis: {
       type: 'value',
+      name: 'MW',
+      nameTextStyle: { color: '#7d909d', fontSize: 12, padding: [0, 0, 0, -20] },
       min: 0,
       max: 1.2,
       interval: 0.4,
-      axisLabel: { color: '#7d909d', fontSize: 9 },
-      splitLine: { lineStyle: { color: '#ebf0f3' } }
+      axisLabel: { color: '#7d909d', fontSize: 12 },
+      splitLine: { lineStyle: { color: '#ebf0f3', type: 'dashed' } }
     },
     series: [
       {
@@ -114,8 +122,17 @@
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#ff4f00', width: 2 },
-        data: [0.08, 0.08, 0.08, 0.08, 0.08, 0.08, 0.08]
+        lineStyle: { color: '#ff4f00', width: 3 },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(255,79,0,0.18)' },
+              { offset: 1, color: 'rgba(255,79,0,0.01)' }
+            ]
+          }
+        },
+        data: [0.05, 0.05, 0.05, 0.12, 0.68, 0.95, 1.10, 1.08, 0.90, 0.55, 0.18, 0.07, 0.05]
       }
     ]
   };
@@ -212,11 +229,11 @@
                 <p>{item.label}</p>
                 <strong>{item.value}</strong>
                 {#if item.target}
-                  <div class="target-bar mt-1.5 flex items-center gap-1.5">
-                    <div class="h-1.5 w-full rounded-full bg-[#e9f0f3] overflow-hidden">
-                      <div class="h-full bg-[#19b89e]" style="width: {item.target}"></div>
+                  <div class="target-bar">
+                    <div class="target-track">
+                      <div class="target-fill target-fill--green" style="width: {item.target}"></div>
                     </div>
-                    <span class="text-[11px] text-[#19b89e] font-bold">{item.target}</span>
+                    <span class="target-pct target-pct--green">{item.target}</span>
                   </div>
                 {/if}
               </div>
@@ -228,11 +245,11 @@
                 <p>{item.label}</p>
                 <strong>{item.value}</strong>
                 {#if item.target}
-                  <div class="target-bar mt-1.5 flex items-center gap-1.5">
-                    <div class="h-1.5 w-full rounded-full bg-[#e9f0f3] overflow-hidden">
-                      <div class="h-full bg-[#00b7ff]" style="width: {item.target}"></div>
+                  <div class="target-bar">
+                    <div class="target-track">
+                      <div class="target-fill target-fill--blue" style="width: {item.target}"></div>
                     </div>
-                    <span class="text-[11px] text-[#00b7ff] font-bold">{item.target}</span>
+                    <span class="target-pct target-pct--blue">{item.target}</span>
                   </div>
                 {/if}
               </div>
@@ -258,7 +275,7 @@
             <div class="chart-box">
               <Chart option={powerOption} />
             </div>
-            <div class="legend-line"><span></span>RESS active power</div>
+            <div class="legend-line"><span></span>RESS Active Power (MW)</div>
           </article>
 
           <article class="panel panel-weather flex flex-col overflow-hidden">
@@ -334,16 +351,16 @@
             <h2 class="mb-2">Alarms & Feed</h2>
             <div class="flex flex-col flex-1">
               {#each recentAlarms as alarm}
-                <div class="flex items-start gap-2 text-[12px] flex-1 py-2 border-b border-[#edf2f5] last:border-0">
-                  <span class="mt-1 flex-shrink-0 w-2.5 h-2.5 rounded-full {alarm.type === 'fault' ? 'bg-[#f35a65]' : 'bg-[#ff4f00]'}"></span>
-                  <div>
-                    <span class="text-[#4b5e6b] font-medium">{alarm.time}</span>
-                    <p class="text-[#17324a] font-bold leading-tight mt-0.5">{alarm.msg}</p>
+                <div class="alarm-feed-row">
+                  <span class="alarm-dot alarm-dot--{alarm.type}"></span>
+                  <div class="alarm-feed-content">
+                    <span class="alarm-time">{alarm.time}</span>
+                    <p class="alarm-msg">{alarm.msg}</p>
                   </div>
                 </div>
               {/each}
-              <div class="pt-2 mt-auto text-[11px] text-center text-[#00b7ff] font-bold cursor-pointer hover:underline">
-                View all notifications
+              <div class="alarm-view-all">
+                View all notifications →
               </div>
             </div>
           </article>
@@ -387,17 +404,20 @@
           <article class="panel panel-emission flex flex-col">
             <h2>Emission Reduction</h2>
             <div class="emission-grid">
-              <div>
+              <div class="emission-item">
+                <span class="emission-icon">🌿</span>
                 <strong>2,593.30</strong>
-                <p>CO2 reduction (t)</p>
+                <p>CO₂ Reduction (t)</p>
               </div>
-              <div>
+              <div class="emission-item">
+                <span class="emission-icon">⛏</span>
                 <strong>1,050.85</strong>
-                <p>Standard coal saved (t)</p>
+                <p>Coal Saved (t)</p>
               </div>
-              <div>
+              <div class="emission-item">
+                <span class="emission-icon">🌳</span>
                 <strong>141,594</strong>
-                <p>Equivalent trees planted</p>
+                <p>Trees Equivalent</p>
               </div>
             </div>
           </article>
@@ -448,7 +468,7 @@
 
   .frame-wrap {
     height: calc(100vh - 56px);
-    padding: 8px 10px 10px;
+    padding: 10px 14px 12px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -457,35 +477,40 @@
   .main-frame {
     display: grid;
     grid-template-rows: auto 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
     flex: 1;
     min-height: 0;
     border: 1px solid #e4ecef;
-    border-radius: 14px;
+    border-radius: 16px;
     background: radial-gradient(circle at top right, #ffffff 0%, #f7fbfd 38%, #f2f7f9 100%);
-    padding: 10px;
+    padding: 12px;
     overflow: hidden;
   }
 
   .panel {
     border: 1px solid #e6edf0;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #ffffff;
-    box-shadow: 0 8px 20px rgba(29, 66, 84, 0.04);
+    box-shadow: 0 4px 16px rgba(29, 66, 84, 0.06), 0 1px 4px rgba(29,66,84,0.04);
     overflow: hidden;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .panel:hover {
+    box-shadow: 0 8px 28px rgba(29, 66, 84, 0.10), 0 1px 4px rgba(29,66,84,0.04);
   }
 
   .top-band {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
-    gap: 8px;
+    gap: 10px;
   }
 
   .summary-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     border: 1px solid #e6edf0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #f9fbfc;
     overflow: hidden;
   }
@@ -494,14 +519,14 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     border: 1px solid #e6edf0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #f9fbfc;
     overflow: hidden;
   }
 
   .metric-card {
     border-right: 1px solid #e6edf0;
-    padding: 9px 11px;
+    padding: 12px 14px;
   }
 
   .metric-card:last-child {
@@ -511,28 +536,62 @@
   .metric-card p {
     color: #546977;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.3;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   .metric-card strong {
     display: block;
     margin-top: 8px;
-    font-size: 20px;
+    font-size: 22px;
     line-height: 1.15;
+    font-weight: 400;
     color: #17324a;
+    letter-spacing: -0.02em;
   }
 
   .metric-card--revenue strong {
-    font-size: 17px;
+    font-size: 18px;
   }
+
+  .target-bar {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .target-track {
+    height: 5px;
+    flex: 1;
+    border-radius: 999px;
+    background: #e9f0f3;
+    overflow: hidden;
+  }
+
+  .target-fill {
+    height: 100%;
+    border-radius: 999px;
+  }
+
+  .target-fill--green { background: #19b89e; }
+  .target-fill--blue  { background: #00b7ff; }
+
+  .target-pct {
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .target-pct--green { color: #19b89e; }
+  .target-pct--blue  { color: #00b7ff; }
 
   .middle-band {
     display: grid;
     grid-template-columns: 1.5fr 0.6fr 0.6fr 0.7fr 0.6fr;
-    gap: 8px;
+    gap: 10px;
     align-items: stretch;
     min-height: 0;
   }
@@ -545,7 +604,7 @@
   .panel-weather,
   .panel-battery,
   .panel-map {
-    padding: 11px;
+    padding: 14px;
   }
 
   /* panels in grid rows must fill the row height */
@@ -558,11 +617,11 @@
 
   .panel h2 {
     margin: 0;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 800;
     color: #1a3246;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
   }
 
   .panel-head {
@@ -580,35 +639,35 @@
   }
 
   .control-group button {
-    padding: 5px 9px;
+    padding: 5px 11px;
     color: #4b5e6b;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1;
   }
 
   .control-group button.active {
     background: #fff;
-    color: #17324a;
+    color: #ff4f00;
     font-weight: 800;
   }
 
   .chart-date {
     display: flex;
-    width: 150px;
+    width: 160px;
     justify-content: space-between;
     margin: 10px auto 0;
     border-radius: 999px;
     background: #f0f6f9;
-    padding: 4px 10px;
+    padding: 5px 12px;
     color: #4b5e6b;
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
   }
 
   .chart-box {
     flex: 1;
-    margin-top: 6px;
+    margin-top: 8px;
     min-height: 0;
   }
 
@@ -618,17 +677,76 @@
     align-items: center;
     gap: 8px;
     color: #4b5e6b;
-    font-size: 11px;
-    font-weight: 500;
-    margin-top: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
   }
 
   .legend-line span {
-    height: 6px;
-    width: 6px;
+    height: 10px;
+    width: 28px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ff4f00 0%, #ff7733 100%);
+    opacity: 0.8;
+  }
+
+  /* Alarm feed styles */
+  .alarm-feed-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex: 1;
+    padding: 9px 0;
+    border-bottom: 1px solid #edf2f5;
+  }
+
+  .alarm-feed-row:last-of-type {
+    border-bottom: 0;
+  }
+
+  .alarm-dot {
+    flex-shrink: 0;
     margin-top: 3px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    background: #ff4f00;
+  }
+
+  .alarm-dot--fault { background: #f35a65; box-shadow: 0 0 0 3px rgba(243,90,101,0.15); }
+  .alarm-dot--alarm { background: #ff4f00; box-shadow: 0 0 0 3px rgba(255,79,0,0.15); }
+
+  .alarm-feed-content {
+    flex: 1;
+  }
+
+  .alarm-time {
+    font-size: 12px;
+    font-weight: 700;
+    color: #4b5e6b;
+    display: block;
+  }
+
+  .alarm-msg {
+    margin-top: 2px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #17324a;
+    line-height: 1.35;
+  }
+
+  .alarm-view-all {
+    padding-top: 8px;
+    margin-top: auto;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    color: #00b7ff;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+
+  .alarm-view-all:hover {
+    text-decoration: underline;
   }
 
   .alarm-body {
@@ -712,38 +830,46 @@
   /* Status rows stretch evenly */
   .status-row {
     display: grid;
-    grid-template-columns: 20px 1fr auto;
+    grid-template-columns: 22px 1fr auto;
     align-items: center;
     gap: 8px;
     border-radius: 8px;
     border: 1px solid #edf2f5;
-    padding: 7px 10px;
+    padding: 9px 10px;
     color: #17324a;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     text-align: left;
     background: #fcfefe;
     flex: 1;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
 
   .status-row:hover {
-    border-color: #d7e3ea;
-    background: #f7fbfd;
+    border-color: #c8d8e2;
+    background: #f0f8fd;
   }
 
   .status-mark {
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1;
   }
 
   .status-label {
     color: #4b5e6b;
+    font-size: 12px;
+  }
+
+  .status-row b {
+    font-size: 15px;
+    font-weight: 400;
+    color: #17324a;
   }
 
   .bottom-band {
     display: grid;
     grid-template-columns: 1fr 1fr 1.5fr;
-    gap: 8px;
+    gap: 10px;
     align-items: stretch;
     min-height: 0;
   }
@@ -778,33 +904,34 @@
 
   .daily-row em {
     font-style: normal;
-    font-size: 12px;
-    font-weight: 700;
-    color: #4b5e6b;
+    font-size: 14px;
+    font-weight: 400;
+    color: #ff4f00;
     text-align: center;
   }
 
   .daily-main {
     display: grid;
-    gap: 4px;
+    gap: 5px;
   }
 
   .daily-line {
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: #3b5262;
   }
 
   .daily-line b {
     color: #17324a;
-    font-weight: 700;
+    font-weight: 400;
+    font-size: 14px;
   }
 
   .bar {
-    height: 4px;
+    height: 6px;
     border-radius: 999px;
     background: #e9f0f3;
     overflow: hidden;
@@ -813,7 +940,8 @@
   .bar span {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, #ff4f00 0%, #ff4f00 100%);
+    background: linear-gradient(90deg, #ff4f00 0%, #ff8040 100%);
+    border-radius: 999px;
   }
 
   .panel-emission {
@@ -828,29 +956,44 @@
     flex: 1;
   }
 
-  .emission-grid div {
+  .emission-item {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border-radius: 8px;
-    border: 1px solid #e7edf1;
-    background: #fbfeff;
-    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #e0eff5;
+    background: linear-gradient(135deg, #f7fdff, #edf7fb);
+    padding: 12px 10px;
+    gap: 2px;
+    transition: transform 0.15s ease;
   }
 
-  .emission-grid strong {
+  .emission-item:hover {
+    transform: translateY(-2px);
+  }
+
+  .emission-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+    line-height: 1;
+  }
+
+  .emission-item strong {
     display: block;
     font-size: 20px;
-    font-weight: 800;
+    font-weight: 400;
     color: #17324a;
+    letter-spacing: -0.02em;
   }
 
-  .emission-grid p {
-    margin-top: 6px;
+  .emission-item p {
+    margin-top: 4px;
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 600;
     color: #4b5e6b;
     line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   @media (min-width: 1024px) {

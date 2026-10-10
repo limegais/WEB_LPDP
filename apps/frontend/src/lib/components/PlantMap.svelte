@@ -7,9 +7,9 @@
   let mapElement: HTMLDivElement;
   let map: any;
 
-  const plants = [
-    { name: 'PLTS Gedung 3 FT', lat: -6.368, lng: 106.832, power: '3.46 h' },
-    { name: 'PLTS di Indomaker', lat: -6.214, lng: 106.845, power: '3.34 h' }
+  export let plants = [
+    { name: 'PLTS Gedung 3 FT', lat: -7.5619387, lng: 110.8539860, power: '3.46 h' },
+    { name: 'PLTS di Indomaker', lat: -6.9329403, lng: 107.6845779, power: '3.34 h' }
   ];
 
   onMount(async () => {
@@ -29,10 +29,9 @@
 
       map = L.map(mapElement).setView([-4.0, 115.0], 4); // Center of Indonesia
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
       }).addTo(map);
 
       plants.forEach(plant => {

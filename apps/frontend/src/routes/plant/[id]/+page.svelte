@@ -188,7 +188,7 @@
                 <!-- Connecting Lines & Labels overlay for 3D -->
                 <div class="absolute inset-0 z-10 pointer-events-none fade-in">
                   <div class="absolute top-[20%] left-[55%] flex flex-col items-center">
-                    <span class="text-xl font-bold text-white drop-shadow-md">3.053 <span class="text-sm font-normal text-[#a0a0a0]">kW</span></span>
+                    <span class="text-xl font-normal text-white drop-shadow-md">3.053 <span class="text-sm text-[#a0a0a0]">kW</span></span>
                     <span class="text-xs text-[#22c55e] mt-1 font-semibold">Solar ›</span>
                   </div>
                   <div class="absolute top-[28%] left-[32%] bg-[#1c1c1c]/50 px-2 py-1 rounded backdrop-blur-sm">
@@ -223,7 +223,7 @@
                   <div class="absolute top-[15%] flex flex-col items-center justify-center w-[120px] h-[120px] rounded-full border-2 border-[#22c55e] bg-[#22c55e]/10 shadow-[0_0_20px_rgba(34,197,94,0.15)] z-10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     <span class="text-xs text-[#a0a0a0]">Solar</span>
-                    <span class="text-lg font-bold text-white">3.053 <span class="text-[9px] font-normal">kW</span></span>
+                    <span class="text-lg font-normal text-white">3.053 <span class="text-[9px]">kW</span></span>
                   </div>
                   
                   <!-- Grid Node (Bottom Left) -->
@@ -277,7 +277,7 @@
                   <div class="w-10 h-10 rounded-full bg-[#1b3d2b] text-[#22c55e] flex items-center justify-center mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                   </div>
-                  <div class="text-4xl font-bold text-white">{overview.energy} <span class="text-[11px] text-[#a0a0a0] font-normal">kWh</span></div>
+                  <div class="text-4xl font-normal text-white">{overview.energy} <span class="text-[11px] text-[#a0a0a0]">kWh</span></div>
                   <div class="text-[11px] text-[#888] mt-2">Energy Generation</div>
                 </div>
                 
@@ -286,7 +286,7 @@
                   <div class="w-10 h-10 rounded-full bg-[#41311b] text-[#ff4f00] flex items-center justify-center mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  <div class="text-4xl font-bold text-white">{overview.revenue} <span class="text-[11px] text-[#a0a0a0] font-normal">k IDR</span></div>
+                  <div class="text-4xl font-normal text-white">{overview.revenue} <span class="text-[11px] text-[#a0a0a0]">k IDR</span></div>
                   <div class="text-[11px] text-[#888] mt-2">Generation Revenue</div>
                 </div>
               </div>
