@@ -1,4 +1,5 @@
 <script lang="ts">
+  console.log("Plant page loaded - layout v3");
   let menuOpen = false;
   let activeTab = 'All (2)';
 
@@ -51,8 +52,8 @@
     </nav>
   </aside>
 
-  <main class="lg:pl-[72px]">
-    <header class="flex h-14 items-center gap-3 px-4 sm:px-7">
+  <main class="min-h-screen lg:pl-[72px]">
+    <header class="flex items-center gap-3 px-4 sm:px-7">
       <button class="icon-button lg:hidden" on:click={() => (menuOpen = !menuOpen)} aria-label="Open navigation">☰</button>
       <p class="hidden text-[11px] text-[#7e909d] sm:block">Good afternoon, <strong class="text-[#3b5062]">PT. RMS</strong></p>
       <span class="hidden text-[11px] text-[#7e909d] sm:block">Friday, 18 Sep 2026</span>
@@ -66,15 +67,15 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-[1580px] px-3 pb-6 sm:px-5">
-      <section class="mb-3">
+    <div class="mx-auto flex min-h-[calc(100vh-56px)] w-full max-w-[1580px] flex-col px-3 pb-6 sm:px-5">
+      <section class="mb-3 shrink-0">
         <p class="eyebrow">Plant Management</p>
         <h1 class="mt-1 text-[40px] leading-[1.1] font-semibold text-[#1f3a52]">Plant list</h1>
-        <p class="mt-2 text-sm text-[#748998]">Manage and monitor all your solar installations.</p>
+        <p class="mt-2 text-sm text-[#748998]">Manage and monitor all your renewable energy installations.</p>
       </section>
 
-      <section class="panel overflow-hidden">
-        <div class="border-b border-[#ebf0f2] p-4">
+      <section class="panel flex flex-1 flex-col overflow-hidden bg-white">
+        <div class="shrink-0 border-b border-[#ebf0f2] p-4">
           <div class="flex flex-wrap items-center gap-2">
             <select class="toolbar-input"><option>All countries / regions</option></select>
             <select class="toolbar-input"><option>All plant types</option></select>
@@ -95,7 +96,7 @@
           </div>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="flex-1 overflow-auto">
           <table class="w-full min-w-[1200px] text-left">
             <thead>
               <tr class="border-b border-[#ebf0f2] bg-[#fcfdfe] text-[11px] text-[#6e8393]">
@@ -138,7 +139,7 @@
           </table>
         </div>
 
-        <footer class="flex items-center justify-between px-4 py-3 text-xs text-[#89a0af]">
+        <footer class="flex shrink-0 items-center justify-between border-t border-[#ebf0f2] px-4 py-3 text-xs text-[#89a0af]">
           <p>Showing 2 of 2 plants</p>
           <div class="flex items-center gap-1">
             <button class="chip">‹</button>

@@ -155,7 +155,7 @@
 </script>
 
 <svelte:head>
-  <title>SolarCloud Dashboard</title>
+  <title>Renewable Energy Dashboard</title>
 </svelte:head>
 
 <div class="min-h-screen bg-[#f3f7f8] text-[#1a3449]">
@@ -178,7 +178,7 @@
   <main class="h-full lg:pl-[72px]">
     <header class="flex h-14 items-center gap-3 border-b border-[#e8eef1] bg-[#f7fafb] px-4 sm:px-6">
       <button class="icon-button lg:hidden" on:click={() => (menuOpen = !menuOpen)} aria-label="Open navigation">☰</button>
-      <p class="hidden text-[13px] text-[#3b5262] font-medium xl:block">RESS Solar Monitoring Dashboard</p>
+      <p class="hidden text-[13px] text-[#3b5262] font-medium xl:block">RESS Renewable Energy Monitoring Dashboard</p>
       
       <div class="ml-4 flex items-center">
         <select bind:value={selectedPlant} class="text-[12px] border border-[#dce4e9] rounded px-2 py-1.5 bg-white outline-none text-[#17324a] font-medium">

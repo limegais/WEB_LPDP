@@ -44,11 +44,11 @@
   <section class="art-side">
     <div class="brand">
       <div class="brand-mark">☼</div>
-      <span>SolarScope</span>
+      <span>Renewable Energy Scope</span>
     </div>
     <div class="art-copy">
       <p class="eyebrow">RESS Platform</p>
-      <h1>Solar energy,<br /><span>under control.</span></h1>
+      <h1>Renewable energy,<br /><span>under control.</span></h1>
       <p class="desc">Monitor plant performance, devices, and energy from one place.</p>
     </div>
     <div class="orb"></div>
@@ -58,7 +58,7 @@
     <div class="form-inner">
       <p class="eyebrow">Welcome back</p>
       <h2>Sign in to your dashboard</h2>
-      <p class="sub">Use your account to continue monitoring your solar plants.</p>
+      <p class="sub">Use your account to continue monitoring your renewable energy plants.</p>
 
       <form on:submit|preventDefault={handleLogin}>
         <label for="email">Email</label>

@@ -189,7 +189,7 @@
                 <div class="absolute inset-0 z-10 pointer-events-none fade-in">
                   <div class="absolute top-[20%] left-[55%] flex flex-col items-center">
                     <span class="text-xl font-normal text-white drop-shadow-md">3.053 <span class="text-sm text-[#a0a0a0]">kW</span></span>
-                    <span class="text-xs text-[#22c55e] mt-1 font-semibold">Solar ›</span>
+                    <span class="text-xs text-[#22c55e] mt-1 font-semibold">Renewable Energy ›</span>
                   </div>
                   <div class="absolute top-[28%] left-[32%] bg-[#1c1c1c]/50 px-2 py-1 rounded backdrop-blur-sm">
                     <span class="text-xs text-[#a0a0a0]">Grid</span>
@@ -219,10 +219,10 @@
                     <path d="M 50% 40% Q 70% 40% 70% 55%" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
                   </svg>
 
-                  <!-- Solar Node (Top Center) -->
+                  <!-- Renewable Energy Node (Top Center) -->
                   <div class="absolute top-[15%] flex flex-col items-center justify-center w-[120px] h-[120px] rounded-full border-2 border-[#22c55e] bg-[#22c55e]/10 shadow-[0_0_20px_rgba(34,197,94,0.15)] z-10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                    <span class="text-xs text-[#a0a0a0]">Solar</span>
+                    <span class="text-xs text-[#a0a0a0]">Renewable Energy</span>
                     <span class="text-lg font-normal text-white">3.053 <span class="text-[9px]">kW</span></span>
                   </div>
                   

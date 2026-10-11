@@ -85,7 +85,7 @@
         <div>
           <p class="eyebrow">Report &amp; Analysis</p>
           <h1>Reports &amp; analysis</h1>
-          <p class="subtitle">Historical energy production and solar system performance data.</p>
+          <p class="subtitle">Historical energy production and renewable energy system performance data.</p>
         </div>
         <div class="row-actions">
           <button class="toolbar-btn" on:click={() => alert('Preparing PDF export.')}>↧ Export PDF</button>

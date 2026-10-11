@@ -73,7 +73,7 @@
       group: "Account related",
       question: "How to obtain an account?",
       answer:
-        "Ask your organization administrator to create a SolarCloud account and assign plant permissions.",
+        "Ask your organization administrator to create a Renewable Energy account and assign plant permissions.",
     },
     {
       group: "Account related",
@@ -149,9 +149,9 @@
     },
     {
       group: "Other issues",
-      question: "How to add iSolarCloud to the email whitelist?",
+      question: "How to add Renewable Energy Platform to the email whitelist?",
       answer:
-        "Add the official SolarCloud sender domain to your organization email whitelist.",
+        "Add the official Renewable Energy sender domain to your organization email whitelist.",
     },
   ];
 
@@ -185,7 +185,7 @@
   ];
 </script>
 
-<svelte:head><title>Support | SolarCloud</title></svelte:head>
+<svelte:head><title>Support | Renewable Energy Platform</title></svelte:head>
 
 <div class="min-h-screen bg-[#f4f7f8] text-[#17324a]">
   <aside
@@ -327,7 +327,7 @@
             <div class="help-head">
               <div>
                 <h2>Quick access</h2>
-                <p>Find the most common SolarCloud tasks and answers.</p>
+                <p>Find the most common Renewable Energy tasks and answers.</p>
               </div>
               <label class="help-search"
                 ><span>⌕</span><input

@@ -51,7 +51,7 @@
 </script>
 
 <svelte:head>
-  <title>Owner Hub | SolarCloud</title>
+  <title>Owner Hub | Renewable Energy Platform</title>
 </svelte:head>
 
 <div class="min-h-screen bg-[#f3f7f8] text-[#19344a]">

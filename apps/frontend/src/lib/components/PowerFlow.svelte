@@ -73,7 +73,7 @@
     <g opacity={flow.solar.active ? 1 : 0.3}>
       <rect x="10" y="30" width="80" height="64" rx="8" fill="#fff" stroke="#ff4f00" stroke-width="1.5" filter="url(#glow-solar)"/>
       <text x="50" y="52" text-anchor="middle" font-size="18" fill="#ff4f00">☀</text>
-      <text x="50" y="66" text-anchor="middle" font-size="7.5" font-weight="700" fill="#3d5264">Solar PV</text>
+      <text x="50" y="66" text-anchor="middle" font-size="7.5" font-weight="700" fill="#3d5264">Renewable (PV)</text>
       <text x="50" y="77" text-anchor="middle" font-size="8" font-weight="700" fill="#ff4f00">{flow.solar.power}</text>
       <text x="50" y="87" text-anchor="middle" font-size="6.5" fill="#7a919f">{flow.solar.voltage} · {flow.solar.current}</text>
     </g>
@@ -159,7 +159,7 @@
 
   <!-- Legend row -->
   <div class="pf-legend">
-    <span class="pf-leg"><span class="dot" style="background:#ff4f00"></span> Solar</span>
+    <span class="pf-leg"><span class="dot" style="background:#ff4f00"></span> Renewable PV</span>
     <span class="pf-leg"><span class="dot" style="background:#00b7ff"></span> Wind</span>
     <span class="pf-leg"><span class="dot" style="background:#19b89e"></span> Export/Charge</span>
     <span class="pf-leg"><span class="dot" style="background:#f35a65"></span> Load/Discharge</span>
