@@ -572,6 +572,351 @@
       }
     ]
   };
+
+  // ==============================================================
+  // DASHBOARD BOTTOM CHARTS: 4 INFORMATIVE MODES
+  // ==============================================================
+  const heatmapDays = ['Minggu', 'Sabtu', 'Jumat', 'Kamis', 'Rabu', 'Selasa', 'Senin'];
+  const heatmapHours = [
+    '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+    '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
+  ];
+
+  function generateHeatmapData() {
+    let data: [number, number, number][] = [];
+    const dayMultipliers = [1.02, 1.05, 0.98, 0.95, 0.92, 0.65, 0.88];
+    for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+      for (let hourIdx = 0; hourIdx < heatmapHours.length; hourIdx++) {
+        let hour = 6 + hourIdx;
+        let peak = 5.8 * dayMultipliers[dayIdx];
+        let normalized = Math.sin(((hour - 6) / 12) * Math.PI);
+        let val = Math.max(0, +(normalized * peak).toFixed(2));
+        if (dayIdx === 5 && hour >= 13 && hour <= 15) {
+          val = +(val * 0.38).toFixed(2);
+        }
+        data.push([hourIdx, dayIdx, val]);
+      }
+    }
+    return data;
+  }
+
+  // 1. POWER CURVE OPTION
+  $: powerCurveOption = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e1e1e',
+      borderColor: '#383838',
+      textStyle: { color: '#e5e5e5', fontSize: 11 },
+      axisPointer: { type: 'cross', lineStyle: { color: '#444', type: 'dashed' } },
+      formatter: (params: any[]) => {
+        let title = `<div style="font-weight:600;margin-bottom:6px;color:#fff;border-bottom:1px solid #333;padding-bottom:3px;">Jam ${params[0].axisValue} WIB</div>`;
+        params.forEach(p => {
+          title += `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin:3px 0;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.color};"></span>
+              <span style="color:#a3a3a3;">${p.seriesName}</span>
+            </div>
+            <b style="color:#fff;">${p.value} kW</b>
+          </div>`;
+        });
+        return title;
+      }
+    },
+    legend: {
+      data: ['PV Output (kW)', 'Konsumsi Beban (kW)', 'Baterai ESS (kW)', 'Grid PLN (kW)'],
+      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      top: 0,
+      left: 'center'
+    },
+    grid: { top: 42, right: 30, bottom: 28, left: 44 },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '23:59'],
+      axisLine: { lineStyle: { color: '#333333' } },
+      axisLabel: { color: '#737373', fontSize: 10 }
+    },
+    yAxis: {
+      type: 'value',
+      name: 'Daya (kW)',
+      nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, -10] },
+      axisLabel: { color: '#737373', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+    },
+    series: [
+      {
+        name: 'PV Output (kW)',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#ff4f00', width: 2.5 },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(255, 79, 0, 0.28)' },
+              { offset: 1, color: 'rgba(255, 79, 0, 0.0)' }
+            ]
+          }
+        },
+        data: [0, 0, 0, 0.28, 2.72, 5.22, 5.82, 4.88, 1.75, 0, 0, 0, 0]
+      },
+      {
+        name: 'Konsumsi Beban (kW)',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#38bdf8', width: 2 },
+        data: [0.85, 0.82, 0.80, 0.95, 1.45, 1.78, 1.82, 1.36, 1.62, 1.85, 1.40, 1.10, 0.90]
+      },
+      {
+        name: 'Baterai ESS (kW)',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#22c55e', width: 2, type: 'dashed' },
+        data: [0, 0, 0, 0, 0.85, 1.80, 2.10, 0.76, -0.45, -0.92, -0.65, -0.20, 0]
+      },
+      {
+        name: 'Grid PLN (kW)',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#a855f7', width: 1.5 },
+        data: [0.85, 0.82, 0.80, 0.67, -0.42, -1.64, -1.90, -0.93, 0.58, 0.93, 0.75, 0.90, 0.90]
+      }
+    ]
+  };
+
+  // 2. ENERGY MONITORING OPTION
+  $: energyMonitoringOption = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e1e1e',
+      borderColor: '#383838',
+      textStyle: { color: '#e5e5e5', fontSize: 11 },
+      axisPointer: { type: 'shadow' }
+    },
+    legend: {
+      data: ['Produksi PV (kWh)', 'Konsumsi Beban (kWh)', 'Ekspor Grid (kWh)', 'Performance Ratio (PR %)'],
+      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      top: 0,
+      left: 'center'
+    },
+    grid: { top: 48, right: 48, bottom: 28, left: 48 },
+    xAxis: {
+      type: 'category',
+      data: ['11 Okt', '12 Okt', '13 Okt', '14 Okt', '15 Okt', '16 Okt', '17 Okt (Hari Ini)'],
+      axisLine: { lineStyle: { color: '#333333' } },
+      axisLabel: { color: '#737373', fontSize: 10 }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: 'Energi (kWh)',
+        nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, -10] },
+        axisLabel: { color: '#737373', fontSize: 10 },
+        splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+      },
+      {
+        type: 'value',
+        name: 'PR (%)',
+        nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, 15] },
+        min: 60,
+        max: 100,
+        axisLabel: { color: '#737373', fontSize: 10, formatter: '{value}%' },
+        splitLine: { show: false }
+      }
+    ],
+    series: [
+      {
+        name: 'Produksi PV (kWh)',
+        type: 'bar',
+        barWidth: '22%',
+        itemStyle: { color: '#ff4f00', borderRadius: [3, 3, 0, 0] },
+        data: [28.4, 30.2, 26.5, 31.8, 29.4, 32.1, 27.8]
+      },
+      {
+        name: 'Konsumsi Beban (kWh)',
+        type: 'bar',
+        barWidth: '22%',
+        itemStyle: { color: '#38bdf8', borderRadius: [3, 3, 0, 0] },
+        data: [15.8, 16.2, 15.4, 17.1, 16.8, 14.5, 16.42]
+      },
+      {
+        name: 'Ekspor Grid (kWh)',
+        type: 'bar',
+        barWidth: '22%',
+        itemStyle: { color: '#22c55e', borderRadius: [3, 3, 0, 0] },
+        data: [12.6, 14.0, 11.1, 14.7, 12.6, 17.6, 14.8]
+      },
+      {
+        name: 'Performance Ratio (PR %)',
+        type: 'line',
+        yAxisIndex: 1,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { color: '#f59e0b', width: 2 },
+        itemStyle: { color: '#f59e0b' },
+        data: [84.2, 85.1, 82.8, 86.4, 85.0, 87.2, 86.1]
+      }
+    ]
+  };
+
+  // 3. GENERATION COMPARISON OPTION
+  $: generationComparisonOption = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e1e1e',
+      borderColor: '#383838',
+      textStyle: { color: '#e5e5e5', fontSize: 11 },
+      axisPointer: { type: 'cross', lineStyle: { color: '#444', type: 'dashed' } }
+    },
+    legend: {
+      data: ['Hari Ini (17 Okt)', 'Kemarin (16 Okt)', 'Rata-rata Historis', 'Target STC (7.1 kWp)'],
+      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      top: 0,
+      left: 'center'
+    },
+    grid: { top: 42, right: 30, bottom: 28, left: 44 },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+      axisLine: { lineStyle: { color: '#333333' } },
+      axisLabel: { color: '#737373', fontSize: 10 }
+    },
+    yAxis: {
+      type: 'value',
+      name: 'Daya (kW)',
+      nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, -10] },
+      max: 7.5,
+      axisLabel: { color: '#737373', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+    },
+    series: [
+      {
+        name: 'Hari Ini (17 Okt)',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#ff4f00', width: 2.5 },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(255, 79, 0, 0.25)' },
+              { offset: 1, color: 'rgba(255, 79, 0, 0.0)' }
+            ]
+          }
+        },
+        data: [0.28, 1.18, 2.72, 4.41, 5.22, 5.68, 5.82, 5.42, 4.88, 3.35, 1.75, 0.52, 0.0]
+      },
+      {
+        name: 'Kemarin (16 Okt)',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#737373', width: 1.8, type: 'dashed' },
+        data: [0.22, 1.05, 2.40, 4.10, 4.80, 5.30, 5.25, 4.90, 4.50, 2.90, 1.40, 0.35, 0.0]
+      },
+      {
+        name: 'Rata-rata Historis',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#38bdf8', width: 1.5, type: 'dotted' },
+        data: [0.25, 1.10, 2.55, 4.25, 5.00, 5.50, 5.60, 5.20, 4.70, 3.10, 1.55, 0.40, 0.0]
+      },
+      {
+        name: 'Target STC (7.1 kWp)',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#22c55e', width: 1, type: 'dashed' },
+        data: [0.35, 1.30, 2.80, 4.60, 5.40, 6.00, 6.10, 5.80, 5.20, 3.50, 1.80, 0.50, 0.0]
+      }
+    ]
+  };
+
+  // 4. HEATMAP OPTION
+  $: heatmapOption = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      position: 'top',
+      backgroundColor: '#1e1e1e',
+      borderColor: '#383838',
+      textStyle: { color: '#e5e5e5', fontSize: 11 },
+      formatter: (p: any) => {
+        return `<div style="font-weight:600;margin-bottom:3px;color:#fff;">${heatmapDays[p.value[1]]} · Jam ${heatmapHours[p.value[0]]} WIB</div>
+        <div style="color:#a3a3a3;">Intensitas Daya: <b style="color:#ff4f00;">${p.value[2]} kW</b></div>`;
+      }
+    },
+    grid: { top: 15, right: 30, bottom: 55, left: 65 },
+    xAxis: {
+      type: 'category',
+      data: heatmapHours,
+      splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.01)', 'rgba(0,0,0,0.05)'] } },
+      axisLine: { lineStyle: { color: '#333333' } },
+      axisLabel: { color: '#737373', fontSize: 10 }
+    },
+    yAxis: {
+      type: 'category',
+      data: heatmapDays,
+      splitArea: { show: true },
+      axisLine: { lineStyle: { color: '#333333' } },
+      axisLabel: { color: '#a3a3a3', fontSize: 10 }
+    },
+    visualMap: {
+      min: 0,
+      max: 6.2,
+      calculable: true,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 2,
+      text: ['6.2 kW (Puncak)', '0 kW'],
+      textStyle: { color: '#737373', fontSize: 10 },
+      inRange: {
+        color: ['#1c1c1c', '#381f10', '#7c2d12', '#c2410c', '#ea580c', '#ff4f00']
+      }
+    },
+    series: [
+      {
+        name: 'Intensitas Pembangkitan PV',
+        type: 'heatmap',
+        data: generateHeatmapData(),
+        label: {
+          show: true,
+          formatter: (p: any) => p.value[2] > 0.5 ? `${p.value[2]}` : '',
+          color: '#e5e5e5',
+          fontSize: 10
+        },
+        itemStyle: {
+          borderColor: '#1e1e1e',
+          borderWidth: 2,
+          borderRadius: 3
+        },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowColor: 'rgba(0, 0, 0, 0.8)',
+            borderColor: '#ffffff',
+            borderWidth: 1.5
+          }
+        }
+      }
+    ]
+  };
+
+  $: activeDashboardChartOption = 
+    chartTab === 'Power Curve' ? powerCurveOption :
+    chartTab === 'Energy Monitoring' ? energyMonitoringOption :
+    chartTab === 'Generation Comparison' ? generationComparisonOption :
+    heatmapOption;
 </script>
 
 <svelte:head>
@@ -1415,76 +1760,198 @@
         <!-- Bottom Section: Graphs -->
         <section class="bg-[#222222] border border-[#2e2e2e] rounded-xl overflow-hidden flex flex-col">
           <!-- Graph Header Tabs -->
-          <div class="flex justify-between items-center px-5 border-b border-[#2d2d2d] bg-[#222]">
-            <div class="flex gap-4">
+          <div class="flex flex-col sm:flex-row justify-between sm:items-center px-5 border-b border-[#2d2d2d] bg-[#222] gap-3 py-1 sm:py-0">
+            <div class="flex gap-2 sm:gap-6 overflow-x-auto no-scrollbar">
               {#each ['Power Curve', 'Energy Monitoring', 'Generation Comparison', 'Heatmap'] as tab}
                 <button 
-                  class="py-3 text-xs transition-colors border-b-2 {chartTab === tab ? 'border-[#ff4f00] text-white font-medium' : 'border-transparent text-[#737373] hover:text-[#d4d4d4]'}"
+                  class="py-3.5 text-xs transition-all border-b-2 whitespace-nowrap {chartTab === tab ? 'border-[#ff4f00] text-white font-semibold' : 'border-transparent text-[#737373] hover:text-[#d4d4d4]'}"
                   on:click={() => chartTab = tab}
                 >
                   {tab}
                 </button>
               {/each}
             </div>
-            <div class="flex items-center gap-3">
-              <button class="text-xs text-[#737373] hover:text-white flex items-center gap-1 border border-[#333] rounded px-2 py-1">
-                Data Comparison ›
-              </button>
-            </div>
-          </div>
-          
-          <!-- Graph Content -->
-          <div class="p-6 relative">
-            <div class="flex justify-between items-start">
-              
-              <!-- Peak Power Label (Left) -->
-              <div class="bg-[#1a1a1a] border border-[#2e2e2e] rounded-lg px-3 py-2 inline-block z-10">
-                <div class="text-xl font-light text-white">{pvPeakPower.toFixed(2)} <span class="text-xs text-[#737373]">kW</span></div>
-                <div class="text-[10px] text-[#737373] mt-0.5">Peak PV Power</div>
-              </div>
-              
-              <!-- Date Picker (Right) -->
-              <div class="bg-[#1a1a1a] border border-[#2e2e2e] text-xs px-2.5 py-1.5 rounded flex items-center justify-between w-[125px] z-10 text-[#a3a3a3]">
+            <div class="flex items-center gap-3 py-2 sm:py-0 self-end sm:self-auto">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1a1a1a] border border-[#2e2e2e] text-[11px] text-[#22c55e]">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse"></span>
+                Telemetry Live
+              </span>
+              <div class="bg-[#1a1a1a] border border-[#2e2e2e] text-xs px-2.5 py-1 rounded flex items-center justify-between w-[125px] text-[#a3a3a3]">
                 <span class="text-[#666] cursor-pointer hover:text-white">‹</span>
-                <span>09/10/2026</span>
+                <span>17/10/2026</span>
                 <span class="text-[#666] cursor-pointer hover:text-white">›</span>
               </div>
             </div>
-
-            <!-- SVG Mock Line Chart -->
-            <div class="w-full h-[280px] mt-4 relative">
-              <!-- Y Axis labels & Grid lines -->
-              <div class="absolute inset-0 flex flex-col justify-between pt-2 pb-6 text-[10px] text-[#555]">
-                {#each ['8.00', '7.00', '6.00', '5.00', '4.00', '3.00', '2.00', '1.00', '0.00'] as val}
-                  <div class="flex items-center gap-2 h-0">
-                    <span class="w-6 text-right relative -top-2">{val}</span>
-                    <div class="flex-1 border-t border-[#2a2a2a]"></div>
-                  </div>
-                {/each}
+          </div>
+          
+          <!-- Dynamic KPI Cards for the Active Tab -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-5 pb-0">
+            {#if chartTab === 'Power Curve'}
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Puncak PV (Today)</div>
+                <div class="text-xl font-light text-[#ff4f00] mt-0.5">5.82 <span class="text-xs text-[#737373]">kW</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
+                  Pukul 12:00 WIB (82% STC)
+                </div>
               </div>
-              
-              <!-- X Axis labels -->
-              <div class="absolute bottom-0 left-8 right-0 flex justify-between text-[10px] text-[#555]">
-                <span>00:00</span>
-                <span>04:00</span>
-                <span>08:00</span>
-                <span>12:00</span>
-                <span>16:00</span>
-                <span>20:00</span>
-                <span></span>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Rata-rata Beban</div>
+                <div class="text-xl font-light text-[#38bdf8] mt-0.5">1.36 <span class="text-xs text-[#737373]">kW</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
+                  Peak 1.85 kW (15:00)
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Net Baterai ESS</div>
+                <div class="text-xl font-light text-[#22c55e] mt-0.5">+0.76 <span class="text-xs text-[#737373]">kW</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
+                  Charging Mode · SOC 78%
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Net Ekspor Grid PLN</div>
+                <div class="text-xl font-light text-[#a855f7] mt-0.5">1.90 <span class="text-xs text-[#737373]">kW</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#a855f7]"></span>
+                  Surplus Feed-in Aktif
+                </div>
               </div>
 
-              <!-- Line Chart -->
-              <div class="absolute inset-0 left-8 bottom-6">
-                <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 1000 200">
-                  <polyline 
-                    points={mockChartPoints} 
-                    fill="none" 
-                    stroke="#ff4f00" 
-                    stroke-width="1.5"
-                    stroke-linejoin="round"
-                  />
+            {:else if chartTab === 'Energy Monitoring'}
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Total PV Yield (7H)</div>
+                <div class="text-xl font-light text-[#ff4f00] mt-0.5">206.2 <span class="text-xs text-[#737373]">kWh</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
+                  Rata-rata 29.5 kWh/hari
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Konsumsi Beban (7H)</div>
+                <div class="text-xl font-light text-[#38bdf8] mt-0.5">112.2 <span class="text-xs text-[#737373]">kWh</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
+                  Rasio Mandiri 68.4%
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Total Ekspor PLN (7H)</div>
+                <div class="text-xl font-light text-[#22c55e] mt-0.5">97.4 <span class="text-xs text-[#737373]">kWh</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
+                  Offset Biaya Listrik FT
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Performance Ratio (PR)</div>
+                <div class="text-xl font-light text-[#f59e0b] mt-0.5">86.1 <span class="text-xs text-[#737373]">%</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
+                  Kategori: Sangat Optimal
+                </div>
+              </div>
+
+            {:else if chartTab === 'Generation Comparison'}
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Hari Ini (17 Okt)</div>
+                <div class="text-xl font-light text-[#ff4f00] mt-0.5">27.80 <span class="text-xs text-[#737373]">kWh</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
+                  Peak 5.82 kW (12:00 WIB)
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Kemarin (16 Okt)</div>
+                <div class="text-xl font-light text-[#a3a3a3] mt-0.5">24.40 <span class="text-xs text-[#737373]">kWh</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#737373]"></span>
+                  Peak 5.30 kW
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Delta Pembangkitan</div>
+                <div class="text-xl font-light text-[#22c55e] mt-0.5">+13.9 <span class="text-xs text-[#737373]">%</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
+                  +3.40 kWh vs Kemarin
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Peak Sun Hours (PSH)</div>
+                <div class="text-xl font-light text-[#38bdf8] mt-0.5">4.42 <span class="text-xs text-[#737373]">Jam</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
+                  Target STC 4.0h tercapai
+                </div>
+              </div>
+
+            {:else if chartTab === 'Heatmap'}
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Jendela Radiasi Puncak</div>
+                <div class="text-xl font-light text-[#ff4f00] mt-0.5">11:00 - 13:30 <span class="text-xs text-[#737373]">WIB</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
+                  Intensitas konsisten > 5.0 kW
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Rata-rata Siang Hari</div>
+                <div class="text-xl font-light text-[#f59e0b] mt-0.5">4.85 <span class="text-xs text-[#737373]">kW</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
+                  Kondisi cerah stabil
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Anomali Cuaca Terdeteksi</div>
+                <div class="text-xl font-light text-[#ec4899] mt-0.5">Selasa 14:00 <span class="text-xs text-[#737373]">WIB</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#ec4899]"></span>
+                  Penurunan mendung lokal (1.2 kW)
+                </div>
+              </div>
+              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Stabilitas Matriks Surya</div>
+                <div class="text-xl font-light text-[#22c55e] mt-0.5">92.4 <span class="text-xs text-[#737373]">%</span></div>
+                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
+                  Bebas shading struktural
+                </div>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Chart Canvas Container -->
+          <div class="p-5">
+            <div class="w-full h-[340px] bg-[#1a1a1a]/40 rounded-lg p-2 border border-[#262626]">
+              <Chart option={activeDashboardChartOption} />
+            </div>
+
+            <!-- Tab Engineering Insight Footer -->
+            <div class="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-xs text-[#888]">
+              <div class="flex items-start md:items-center gap-2.5">
+                <svg class="w-4 h-4 text-[#ff4f00] shrink-0 mt-0.5 md:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
+                <span>
+                  {#if chartTab === 'Power Curve'}
+                    <strong class="text-white">Persamaan Keseimbangan Daya:</strong> <span class="text-[#bbb]">P_pv (5.82 kW) = P_load (1.36 kW) + P_batt (+0.76 kW) + P_grid (1.90 kW Ekspor)</span>. Sistem beroperasi dalam efisiensi optimal tanpa curtailment.
+                  {:else if chartTab === 'Energy Monitoring'}
+                    <strong class="text-white">Audit Neraca Energi Mingguan:</strong> Total pembangkitan 206.2 kWh mampu menyuplai beban siang hari Gedung 3 FT, dengan kelebihan 97.4 kWh diekspor ke PLN untuk menekan tagihan listrik bulanan.
+                  {:else if chartTab === 'Generation Comparison'}
+                    <strong class="text-white">Analisis Komparatif:</strong> Kurva daya hari ini mencapai 82.0% dari kapasitas puncak teoritis STC (7.1 kWp), membuktikan panel surya bersih dari debu (soiling) dan MPPT bekerja optimal.
+                  {:else if chartTab === 'Heatmap'}
+                    <strong class="text-white">Pola Insolasi Mingguan:</strong> Matriks visual menunjukkan distribusi penyinaran matahari dari 06:00 hingga 18:00 WIB. Warna oranye terang menandakan periode produksi puncak (Peak Sun Hours) bebas bayangan.
+                  {/if}
+                </span>
+              </div>
+              <div class="flex items-center gap-2 shrink-0 text-[11px] text-[#666]">
+                <span>Resolusi: 60 Menit</span>
+                <span>•</span>
+                <span>RTU-01 Telemetry</span>
               </div>
             </div>
           </div>
