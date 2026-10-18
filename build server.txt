@@ -1,0 +1,83 @@
+Berikut adalah panduan lengkap step-by-step untuk memperbarui kode dan mengunggahnya ke server (152.42.236.38).
+
+Cara 1: Alur Standar Git (Rekomendasi)
+💻 Langkah di Komputer / Laptop Lokal (PowerShell)
+Buka terminal PowerShell di folder proyek (c:\Users\ramad\Downloads\ress-dashboard):
+
+1. Cek file yang berubah:
+
+powershell
+git status
+2. Simpan (stage) semua perubahan:
+
+powershell
+git add .
+3. Buat commit dengan pesan deskripsi perubahan:
+
+powershell
+git commit -m "Update fitur atau perbaikan tampilan"
+4. Push ke GitHub:
+
+powershell
+# Push ke repo WEB_LPDP (yang terhubung ke server)
+git push origin main
+# (Opsional) Push juga ke repo bems-dashboard jika diperlukan
+git push bems main:bems
+🌐 Langkah di Server Droplet
+Setelah push ke GitHub selesai, perbarui kode di server:
+
+5. Masuk ke server via SSH:
+
+powershell
+ssh root@152.42.236.38
+6. Masuk ke folder proyek dan tarik kode terbaru dari GitHub:
+
+bash
+cd /var/www/WEB_LPDP
+git pull origin main
+7. Build ulang frontend:
+
+bash
+export PATH=/root/.bun/bin:$PATH
+cd /var/www/WEB_LPDP/apps/frontend
+bun run build
+8. Muat ulang (reload) Nginx agar perubahan langsung tampil:
+
+bash
+docker exec ress-nginx nginx -s reload
+9. Selesai! Keluar dari server:
+
+bash
+exit
+Cara 2: Satu Perintah Otomatis dari Laptop (Paling Cepat)
+Jika Anda tidak ingin login manual ke SSH setiap kali update, Anda bisa menjalankan satu rangkaian perintah langsung dari PowerShell di laptop:
+
+powershell
+# 1. Commit dan push ke GitHub
+git add . ; git commit -m "update dashboard" ; git push origin main ; git push bems main:bems
+# 2. Perintahkan server untuk pull, build, dan reload otomatis
+ssh root@152.42.236.38 "cd /var/www/WEB_LPDP && git pull origin main && export PATH=/root/.bun/bin:$PATH && cd apps/frontend && bun run build && docker exec ress-nginx nginx -s reload"
+Cara 3: Build di Lokal lalu Kirim File (Alternatif Ringan)
+Jika server Anda sedang mengalami beban CPU/RAM tinggi dan Anda ingin mengompilasi di laptop saja:
+
+Build di laptop Anda:
+
+powershell
+cd apps\frontend
+bun run build
+cd ..\..
+Kirim langsung folder hasil build ke server via SCP:
+
+powershell
+scp -r apps\frontend\build\* root@152.42.236.38:/var/www/WEB_LPDP/apps/frontend/build/
+Reload Nginx di server:
+
+powershell
+ssh root@152.42.236.38 "docker exec ress-nginx nginx -s reload"
+🔍 Ringkasan Perintah Cepat (Cheat Sheet)
+Kebutuhan	Perintah
+Login ke Server	ssh root@152.42.236.38
+Cek Kontainer Docker	docker ps
+Restart Nginx	docker exec ress-nginx nginx -s reload
+Cek Log Akses Web	docker logs --tail 50 ress-nginx
+Buka Web di Browser	http://152.42.236.38/plant/PLTS%20Gedung%203%20FT

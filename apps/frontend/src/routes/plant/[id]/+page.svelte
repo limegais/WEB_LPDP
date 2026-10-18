@@ -1074,30 +1074,282 @@
             </div>
             
             <!-- Graphic Area -->
-            <div class="flex-1 relative flex items-center justify-center p-4">
+            <div class="flex-1 relative flex items-center justify-center p-2 sm:p-4 overflow-hidden">
               
               {#if viewMode === '3d'}
-                <!-- Clean 3D Overlay -->
-                <div class="absolute inset-0 z-10 pointer-events-none fade-in">
-                  <div class="absolute top-[20%] left-[55%] flex flex-col items-center bg-[#1c1c1c]/80 px-3 py-1.5 rounded-lg border border-[#333] backdrop-blur-sm">
-                    <span class="text-lg font-light text-white">{effectivePv.toFixed(3)} <span class="text-xs text-[#888]">kW</span></span>
-                    <span class="text-[11px] text-[#22c55e] font-medium">PV Output</span>
+                <!-- 3D Isometric Energy Flow Area (Pure Visual Animation) -->
+                <div class="relative w-full max-w-[660px] aspect-square flex items-center justify-center select-none fade-in">
+                  
+                  <!-- Soft Ambient Background Glow matching the house environment -->
+                  <div class="absolute inset-0 rounded-full bg-radial from-[#242c28]/40 via-[#1e2022]/20 to-transparent pointer-events-none blur-2xl"></div>
+
+                  <!-- Base 3D House Image with seamless radial vignette blending -->
+                  <img 
+                    src="/images/house-power-flow.jpg" 
+                    alt="Power Flow Diagram" 
+                    class="w-full h-full object-contain z-0 fade-in transition-opacity duration-700 {pvInverterEnabled ? 'opacity-95' : 'opacity-75'}" 
+                    style="mask-image: radial-gradient(ellipse 70% 68% at 50% 50%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 73%); -webkit-mask-image: radial-gradient(ellipse 70% 68% at 50% 50%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 73%);" 
+                  />
+
+                  <!-- Dynamic SVG Electrical Flow Overlay -->
+                  <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1024 1024" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                      <!-- Harmonious Cyber-Emerald Neon Glow Filter -->
+                      <filter id="glow-energy" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3.5" result="blur1" />
+                        <feGaussianBlur stdDeviation="1.5" result="blur2" />
+                        <feMerge>
+                          <feMergeNode in="blur1" />
+                          <feMergeNode in="blur2" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+
+                      <!-- Soft Cyan Glow for Grid -->
+                      <filter id="glow-grid" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3.5" result="blur1" />
+                        <feGaussianBlur stdDeviation="1.5" result="blur2" />
+                        <feMerge>
+                          <feMergeNode in="blur1" />
+                          <feMergeNode in="blur2" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+
+                    <!-- ============================================== -->
+                    <!-- 1. BASE CONDUIT TRACKS (Blends into Architecture) -->
+                    <!-- ============================================== -->
+                    <!-- PV Rooftop Conduit Track -->
+                    <path d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" stroke="rgba(0,0,0,0.4)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" stroke={pvInverterEnabled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    
+                    <!-- PV Side Wall Conduit Track -->
+                    <path d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" stroke="rgba(0,0,0,0.35)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" stroke={pvInverterEnabled ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.05)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+                    <!-- Utility Grid Overhead Wire & Wall Conduit Track -->
+                    <path d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" stroke="rgba(0,0,0,0.4)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" stroke={pvInverterEnabled ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+                    <!-- Inverter to Baterai ESS Station Track -->
+                    <path d="M 685 650 L 685 690 L 730 735 L 758 775" stroke="rgba(0,0,0,0.4)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M 685 650 L 685 690 L 730 735 L 758 775" stroke={pvInverterEnabled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+                    <!-- Inverter to House Foundation / Beban Track -->
+                    <path d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" stroke="rgba(0,0,0,0.4)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" stroke={pvInverterEnabled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+                    <!-- ============================================== -->
+                    <!-- 2. DYNAMIC ELECTRIC FLOW (Active when Inverter is ON) -->
+                    <!-- ============================================== -->
+                    {#if pvInverterEnabled}
+                      <!-- A. Solar PV to Inverter Flow (Energi Surya Mengalir ke Inverter) -->
+                      {#if effectivePv > 0}
+                        <!-- Outer Neon Emerald Beam -->
+                        <path 
+                          d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" 
+                          stroke="#10b981" 
+                          stroke-width="2.6" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="14 26" 
+                          class={effectivePv > 2 ? 'flow-anim-forward-fast' : 'flow-anim-forward'} 
+                          filter="url(#glow-energy)" 
+                        />
+                        <!-- White-Hot Intense Energy Core Pulse -->
+                        <path 
+                          d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" 
+                          stroke="#ffffff" 
+                          stroke-width="1.2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="5 35" 
+                          class={effectivePv > 2 ? 'flow-anim-forward-fast' : 'flow-anim-forward'} 
+                        />
+
+                        <!-- Secondary Conduit Stream -->
+                        <path 
+                          d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" 
+                          stroke="#10b981" 
+                          stroke-width="2.2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="12 24" 
+                          class="flow-anim-forward" 
+                          filter="url(#glow-energy)" 
+                        />
+                        <path 
+                          d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" 
+                          stroke="#ffffff" 
+                          stroke-width="1" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="4 32" 
+                          class="flow-anim-forward" 
+                        />
+                      {/if}
+
+                      <!-- B. Utility Grid Flow (Impor PLN / Ekspor PLN) -->
+                      {#if gridPower > 0}
+                        <path 
+                          d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" 
+                          stroke={gridMode === 'export' ? '#10b981' : '#38bdf8'} 
+                          stroke-width="2.5" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="14 26" 
+                          class={gridMode === 'export' ? 'flow-anim-reverse' : 'flow-anim-forward'} 
+                          filter={gridMode === 'export' ? 'url(#glow-energy)' : 'url(#glow-grid)'} 
+                        />
+                        <path 
+                          d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" 
+                          stroke="#ffffff" 
+                          stroke-width="1.2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="5 35" 
+                          class={gridMode === 'export' ? 'flow-anim-reverse' : 'flow-anim-forward'} 
+                        />
+                      {/if}
+
+                      <!-- C. Inverter to Beban Gedung Flow (Suplai Listrik Gedung) -->
+                      {#if totalLoadPower > 0}
+                        <path 
+                          d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" 
+                          stroke="#10b981" 
+                          stroke-width="2.5" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="14 26" 
+                          class="flow-anim-forward" 
+                          filter="url(#glow-energy)" 
+                        />
+                        <path 
+                          d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" 
+                          stroke="#ffffff" 
+                          stroke-width="1.2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="5 35" 
+                          class="flow-anim-forward" 
+                        />
+                      {/if}
+
+                      <!-- D. Inverter to/from Baterai ESS Flow (Charge / Discharge) -->
+                      {#if batteryPower > 0 && batteryStatus !== 'standby'}
+                        <path 
+                          d="M 685 650 L 685 690 L 730 735 L 758 775" 
+                          stroke={batteryStatus === 'charging' ? '#10b981' : '#34d399'} 
+                          stroke-width="2.5" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="14 26" 
+                          class={batteryStatus === 'charging' ? 'flow-anim-forward' : 'flow-anim-reverse'} 
+                          filter="url(#glow-energy)" 
+                        />
+                        <path 
+                          d="M 685 650 L 685 690 L 730 735 L 758 775" 
+                          stroke="#ffffff" 
+                          stroke-width="1.2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none" 
+                          stroke-dasharray="5 35" 
+                          class={batteryStatus === 'charging' ? 'flow-anim-forward' : 'flow-anim-reverse'} 
+                        />
+                      {/if}
+
+                      <!-- Subtle Energy Pulse on Inverter Wall Unit -->
+                      <circle cx="682" cy="592" r="26" fill="none" stroke="#10b981" class="inverter-ring" />
+                      <circle cx="682" cy="592" r="3.5" fill="#10b981" filter="url(#glow-energy)" />
+                      <!-- Digital Screen Glow on Inverter -->
+                      <rect x="670" y="602" width="24" height="12" rx="2" fill="#10b981" opacity="0.4" filter="url(#glow-energy)" />
+
+                    {:else}
+                      <!-- Inverter is OFF: Display Dark Standby State (Arus Listrik Mati) -->
+                      <circle cx="682" cy="592" r="3" fill="#ef4444" opacity="0.6" />
+                      <rect x="670" y="602" width="24" height="12" rx="2" fill="#ef4444" opacity="0.15" />
+                    {/if}
+
+                    <!-- Seamless Connection Junction Dots -->
+                    <circle cx="681" cy="535" r="2.5" fill={pvInverterEnabled && effectivePv > 0 ? "#10b981" : "#555"} />
+                    <circle cx="665" cy="650" r="2.5" fill={pvInverterEnabled ? "#10b981" : "#555"} />
+                    <circle cx="685" cy="650" r="2.5" fill={pvInverterEnabled ? "#10b981" : "#555"} />
+                    <circle cx="770" cy="580" r="3.5" fill={pvInverterEnabled && gridPower > 0 ? (gridMode === 'export' ? "#10b981" : "#38bdf8") : "#555"} />
+                  </svg>
+
+                  <!-- ============================================== -->
+                  <!-- 3. ELEGANT BLENDED TELEMETRY BADGES -->
+                  <!-- ============================================== -->
+                  <div class="absolute inset-0 z-20 pointer-events-none">
+                    
+                    <!-- Badge 1: PV Output (Top Array) -->
+                    <div 
+                      class="absolute top-[18%] left-[54%] flex flex-col items-center bg-[#141618]/75 px-3 py-1.5 rounded-xl border border-[#2e3438]/80 backdrop-blur-md shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                      on:click={() => showToast(`PV Output: ${effectivePv.toFixed(3)} kW`)}
+                      role="button"
+                      tabindex="0"
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`PV Output: ${effectivePv.toFixed(3)} kW`)}
+                    >
+                      <div class="flex items-center gap-1.5 mb-0.5">
+                        <span class="w-1.5 h-1.5 rounded-full {effectivePv > 0 ? 'bg-[#10b981] animate-pulse' : 'bg-[#737373]'}"></span>
+                        <span class="text-[10px] text-[#10b981] font-semibold tracking-wide">PV Output</span>
+                      </div>
+                      <span class="text-base sm:text-lg font-light text-white tracking-tight">{effectivePv.toFixed(3)} <span class="text-[10px] text-[#888]">kW</span></span>
+                    </div>
+
+                    <!-- Badge 2: Grid PLN (Upper Left) -->
+                    <div 
+                      class="absolute top-[29%] left-[25%] bg-[#141618]/75 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-[#2e3438]/80 text-center shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                      on:click={() => showToast(`Grid PLN: ${gridMode === 'export' ? 'Ekspor' : 'Impor'} ${gridPower.toFixed(2)} kW`)}
+                      role="button"
+                      tabindex="0"
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`Grid PLN: ${gridPower.toFixed(2)} kW`)}
+                    >
+                      <span class="text-[9px] text-[#888] block uppercase tracking-wider font-medium">Grid PLN</span>
+                      <span class="text-xs font-bold {gridMode === 'export' ? 'text-[#10b981]' : 'text-[#38bdf8]'}">{gridPower.toFixed(2)} kW</span>
+                      <span class="text-[9px] text-[#737373] block">{gridMode === 'export' ? 'Ekspor' : 'Impor'}</span>
+                    </div>
+
+                    <!-- Badge 3: Beban Gedung (Lower Left) -->
+                    <div 
+                      class="absolute top-[78%] left-[25%] bg-[#141618]/75 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-[#2e3438]/80 text-center shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                      on:click={() => showToast(`Konsumsi Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                      role="button"
+                      tabindex="0"
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`Konsumsi Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                    >
+                      <span class="text-[9px] text-[#888] block uppercase tracking-wider font-medium">Beban Gedung</span>
+                      <span class="text-xs font-bold text-white">{totalLoadPower.toFixed(2)} kW</span>
+                      <span class="text-[9px] text-[#737373] block">Gedung 3 FT</span>
+                    </div>
+
+                    <!-- Badge 4: Baterai ESS (Lower Right) -->
+                    <div 
+                      class="absolute top-[78%] left-[73%] bg-[#141618]/75 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-[#2e3438]/80 text-center shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                      on:click={() => showToast(`Baterai ESS: ${batterySoc}% (${batteryStatus})`)}
+                      role="button"
+                      tabindex="0"
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`Baterai ESS: ${batterySoc}%`)}
+                    >
+                      <span class="text-[9px] text-[#888] block uppercase tracking-wider font-medium">Baterai ESS</span>
+                      <span class="text-xs font-bold text-[#10b981]">{batterySoc}% ({batteryPower.toFixed(2)} kW)</span>
+                      <span class="text-[9px] text-[#737373] block capitalize">{batteryStatus}</span>
+                    </div>
+
                   </div>
-                  <div class="absolute top-[30%] left-[28%] bg-[#1c1c1c]/80 px-2.5 py-1 rounded-lg backdrop-blur-sm border border-[#333] text-center">
-                    <span class="text-[10px] text-[#888] block">Grid PLN</span>
-                    <span class="text-xs font-semibold {gridMode === 'export' ? 'text-[#22c55e]' : 'text-[#38bdf8]'}">{gridPower.toFixed(2)} kW</span>
-                  </div>
-                  <div class="absolute bottom-[22%] left-[26%] bg-[#1c1c1c]/80 px-2.5 py-1 rounded-lg backdrop-blur-sm border border-[#333] text-center">
-                    <span class="text-[10px] text-[#888] block">Beban</span>
-                    <span class="text-xs font-semibold text-white">{totalLoadPower.toFixed(2)} kW</span>
-                  </div>
-                  <div class="absolute bottom-[22%] right-[26%] bg-[#1c1c1c]/80 px-2.5 py-1 rounded-lg backdrop-blur-sm border border-[#333] text-center">
-                    <span class="text-[10px] text-[#888] block">Baterai ESS</span>
-                    <span class="text-xs font-semibold text-[#22c55e]">{batterySoc}% ({batteryPower.toFixed(2)} kW)</span>
-                  </div>
+
                 </div>
-                
-                <img src="/images/house-power-flow.jpg" alt="Power Flow Diagram" class="w-full max-w-[650px] h-auto object-contain z-0 fade-in opacity-85" style="mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%); -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%);" />
               
               {:else}
                 <!-- 2D Minimalist Circular Node Topology -->
@@ -1106,63 +1358,76 @@
                   <!-- Clean Connecting SVG Lines -->
                   <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 520 320" preserveAspectRatio="xMidYMid meet">
                     <defs>
+                      <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+                      </marker>
+                      <marker id="arrow-cyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8" />
+                      </marker>
                       <marker id="arrow-muted" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#666666" />
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#555555" />
                       </marker>
                     </defs>
 
                     <!-- PV to Inverter -->
-                    <line x1="260" y1="88" x2="260" y2="132" stroke="#404040" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow-muted)">
-                      {#if effectivePv > 0}
-                        <animate attributeName="stroke-dashoffset" from="16" to="0" dur="1s" repeatCount="indefinite" />
-                      {/if}
-                    </line>
-
-                    <!-- Inverter to Grid / Grid to Inverter -->
-                    {#if gridMode === 'export'}
-                      <line x1="228" y1="160" x2="148" y2="160" stroke="#404040" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow-muted)">
-                        {#if gridPower > 0}
-                          <animate attributeName="stroke-dashoffset" from="16" to="0" dur="1.2s" repeatCount="indefinite" />
-                        {/if}
+                    {#if pvInverterEnabled && effectivePv > 0}
+                      <line x1="260" y1="88" x2="260" y2="132" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
+                        <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" />
                       </line>
                     {:else}
-                      <line x1="148" y1="160" x2="228" y2="160" stroke="#404040" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow-muted)">
-                        {#if gridPower > 0}
-                          <animate attributeName="stroke-dashoffset" from="16" to="0" dur="1.2s" repeatCount="indefinite" />
-                        {/if}
-                      </line>
+                      <line x1="260" y1="88" x2="260" y2="132" stroke="#333333" stroke-width="1.5" stroke-dasharray="3,3" />
+                    {/if}
+
+                    <!-- Inverter to Grid / Grid to Inverter -->
+                    {#if pvInverterEnabled && gridPower > 0}
+                      {#if gridMode === 'export'}
+                        <line x1="228" y1="160" x2="148" y2="160" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
+                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
+                        </line>
+                      {:else}
+                        <line x1="148" y1="160" x2="228" y2="160" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-cyan)" filter="url(#glow-grid)">
+                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
+                        </line>
+                      {/if}
+                    {:else}
+                      <line x1="148" y1="160" x2="228" y2="160" stroke="#333333" stroke-width="1.5" stroke-dasharray="3,3" />
                     {/if}
 
                     <!-- Inverter to Load -->
-                    <line x1="292" y1="160" x2="372" y2="160" stroke="#404040" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow-muted)">
-                      {#if totalLoadPower > 0}
-                        <animate attributeName="stroke-dashoffset" from="16" to="0" dur="1s" repeatCount="indefinite" />
-                      {/if}
-                    </line>
+                    {#if pvInverterEnabled && totalLoadPower > 0}
+                      <line x1="292" y1="160" x2="372" y2="160" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
+                        <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" />
+                      </line>
+                    {:else}
+                      <line x1="292" y1="160" x2="372" y2="160" stroke="#333333" stroke-width="1.5" stroke-dasharray="3,3" />
+                    {/if}
 
                     <!-- Inverter to Battery / Battery to Inverter -->
-                    {#if batteryStatus === 'charging'}
-                      <line x1="260" y1="188" x2="260" y2="232" stroke="#404040" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow-muted)">
-                        <animate attributeName="stroke-dashoffset" from="16" to="0" dur="1.2s" repeatCount="indefinite" />
-                      </line>
-                    {:else if batteryStatus === 'discharging'}
-                      <line x1="260" y1="232" x2="260" y2="188" stroke="#404040" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow-muted)">
-                        <animate attributeName="stroke-dashoffset" from="16" to="0" dur="1.2s" repeatCount="indefinite" />
-                      </line>
+                    {#if pvInverterEnabled && batteryPower > 0 && batteryStatus !== 'standby'}
+                      {#if batteryStatus === 'charging'}
+                        <line x1="260" y1="188" x2="260" y2="232" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
+                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
+                        </line>
+                      {:else}
+                        <line x1="260" y1="232" x2="260" y2="188" stroke="#34d399" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
+                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
+                        </line>
+                      {/if}
                     {:else}
                       <line x1="260" y1="188" x2="260" y2="232" stroke="#333333" stroke-width="1" stroke-dasharray="2,2" />
                     {/if}
                   </svg>
 
+
                   <!-- Node 1: PV Solar (Top) -->
                   <div 
-                    class="absolute top-[6%] left-1/2 -translate-x-1/2 flex flex-col items-center justify-center w-[116px] h-[116px] rounded-full border border-[#22c55e]/70 bg-[#16231a] z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
+                    class="absolute top-[6%] left-1/2 -translate-x-1/2 flex flex-col items-center justify-center w-[116px] h-[116px] rounded-full border {pvInverterEnabled && effectivePv > 0 ? 'border-[#22c55e]/70 bg-[#16231a]' : 'border-[#383838] bg-[#1a1a1a]'} z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
                     on:click={() => showToast(`PV: ${effectivePv.toFixed(3)} kW`)}
                     role="button"
                     tabindex="0"
                     on:keydown={(e) => e.key === 'Enter' && showToast(`PV: ${effectivePv.toFixed(3)} kW`)}
                   >
-                    <svg class="w-5 h-5 text-[#22c55e] mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg class="w-5 h-5 {effectivePv > 0 ? 'text-[#22c55e]' : 'text-[#737373]'} mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="5"></circle>
                       <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
                       <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
@@ -1189,10 +1454,22 @@
                     <span class="text-[9px] text-[#737373]">{gridMode === 'export' ? 'Ekspor' : 'Impor'}</span>
                   </div>
 
-                  <!-- Center: Inverter Hybrid Hub -->
-                  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[66px] h-[66px] rounded-full border border-[#ff4f00]/60 bg-[#1f1917] z-10 shadow-sm">
-                    <span class="text-[9px] font-semibold text-[#ff4f00] uppercase tracking-tight">Inverter</span>
-                    <span class="text-[10px] font-medium text-white">{((effectivePv) + (batteryStatus === 'discharging' ? batteryPower : 0)).toFixed(2)} kW</span>
+                  <!-- Center: Inverter Hybrid Hub (Clickable Toggle) -->
+                  <div 
+                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[74px] h-[74px] rounded-full border transition-all cursor-pointer hover:scale-105 z-10 shadow-lg {pvInverterEnabled ? 'border-[#22c55e] bg-[#16291d] shadow-[0_0_15px_rgba(34,197,94,0.25)]' : 'border-[#ef4444]/60 bg-[#291717] opacity-80'}"
+                    on:click={togglePvInverter}
+                    role="button"
+                    tabindex="0"
+                    on:keydown={(e) => e.key === 'Enter' && togglePvInverter()}
+                    title="Klik untuk {pvInverterEnabled ? 'mematikan' : 'menyalakan'} Inverter"
+                  >
+                    <span class="text-[9px] font-bold uppercase tracking-tight {pvInverterEnabled ? 'text-[#22c55e]' : 'text-[#ef4444]'}">
+                      {pvInverterEnabled ? 'INV · ON' : 'INV · OFF'}
+                    </span>
+                    <span class="text-[10px] font-semibold text-white">
+                      {pvInverterEnabled ? ((effectivePv) + (batteryStatus === 'discharging' ? batteryPower : 0)).toFixed(2) + ' kW' : '0 kW'}
+                    </span>
+                    <span class="text-[8px] text-[#888]">{pvInverterEnabled ? 'Aktif' : 'Mati'}</span>
                   </div>
 
                   <!-- Node 3: Load (Right) -->
@@ -2796,5 +3073,62 @@
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+
+  /* Electric Current Flow Keyframes */
+  @keyframes electricFlowForward {
+    from {
+      stroke-dashoffset: 44;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes electricFlowReverse {
+    from {
+      stroke-dashoffset: 0;
+    }
+    to {
+      stroke-dashoffset: 44;
+    }
+  }
+
+  @keyframes inverterPulse {
+    0% {
+      r: 14;
+      opacity: 0.85;
+      stroke-width: 2.5;
+    }
+    60% {
+      r: 44;
+      opacity: 0.4;
+      stroke-width: 1.2;
+    }
+    100% {
+      r: 58;
+      opacity: 0;
+      stroke-width: 0.2;
+    }
+  }
+
+  .flow-anim-forward {
+    animation: electricFlowForward 1.3s linear infinite;
+  }
+
+  .flow-anim-reverse {
+    animation: electricFlowReverse 1.3s linear infinite;
+  }
+
+  .flow-anim-forward-fast {
+    animation: electricFlowForward 0.85s linear infinite;
+  }
+
+  .flow-anim-reverse-fast {
+    animation: electricFlowReverse 0.85s linear infinite;
+  }
+
+  .inverter-ring {
+    animation: inverterPulse 2.2s cubic-bezier(0.1, 0.7, 0.4, 1) infinite;
   }
 </style>
