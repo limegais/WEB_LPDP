@@ -1,9 +1,13 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import Chart from '$lib/components/Chart.svelte';
   
+  let menuOpen = false;
+
   // Dynamic plant name based on URL param
-  const plantName = decodeURIComponent($page.params.id);
+  $: plantName = decodeURIComponent($page.params.id || 'PLTS Gedung 3 FT');
+  $: isIndomaker = plantName.toLowerCase().includes('indomaker');
   
   const weather = {
     desc: 'Few Clouds',
@@ -27,13 +31,13 @@
   // Navigation State
   let activeTab: 'Dashboard' | 'Kontrol Energi' | 'Prediksi & Analitik' | 'Devices' | 'Alarms' = 'Dashboard';
   let overviewPeriod = 'Day';
-  let viewMode = '2d'; // '3d' or '2d'
+  let viewMode = '3d'; // '3d' or '2d'
   let chartTab = 'Power Curve';
 
   // ==========================================
   // KONTROL ENERGI (ENERGY CONTROL) STATE
   // ==========================================
-  let controlMode: 'auto' | 'manual' = 'auto'; // 'auto' | 'manual'
+  let controlMode: 'auto' | 'manual' = 'auto';
   let autoStrategy: 'self_consumption' | 'peak_shaving' | 'tou' | 'backup' = 'self_consumption';
 
   // 1. PV Panel Surya
@@ -74,7 +78,7 @@
   let loadVoltage = 220.5; // V
   let loadPowerFactor = 0.98;
 
-  // Toast Notification System (Minimalist)
+  // Toast Notification System
   let toastMessage = '';
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   function showToast(msg: string) {
@@ -199,7 +203,6 @@
     showToast(`Strategi aktif: ${names[strategy]}`);
   }
 
-
   function toggleZeroExport() {
     zeroExportEnabled = !zeroExportEnabled;
     showToast(zeroExportEnabled 
@@ -254,59 +257,39 @@
     overview = { energy: '10,240', revenue: '14,800' };
   }
 
-  // Chart points generator for mock SVG
-  const generateChartPoints = () => {
-    let points = "";
-    for(let i=0; i<300; i++) {
-      let x = 200 + i*2;
-      let y = 190;
-      if (i > 50 && i < 250) {
-        let base = Math.sin((i-50)/200 * Math.PI) * 120;
-        let noise = Math.random() * 40 - 20;
-        y = 190 - (base + noise);
-      }
-      points += `${x},${y} `;
-    }
-    return points;
-  };
-  const mockChartPoints = generateChartPoints();
-
   // ==============================================================
-  // PREDIKSI & ANALITIK (FORECAST & ANALYTICS) STATE & ENGINE
+  // PREDIKSI & ANALITIK STATE & ENGINE
   // ==============================================================
   let weatherModelSource: 'BMKG' | 'OpenWeather' = 'BMKG';
   let analyticsViewMode: 'hourly' | 'weekly' = 'hourly';
-  let selectedWeatherMetric = 'irradiance';
 
-  // Plant Technical Specs (PLTS Gedung 3 FT)
   const pvSystemSpecs = {
     installedCapacityWp: 7100, // 7.10 kWp
     panelCount: 16,
     panelModel: 'Tier-1 Mono PERC 445 Wp',
-    tiltAngle: 15, // deg
-    azimuth: 0, // deg (Utara)
-    tempCoefficient: -0.35, // %/°C
-    noct: 45, // °C
-    inverterEff: 97.8, // %
-    soilingWiringLoss: 3.2 // %
+    tiltAngle: 15,
+    azimuth: 0,
+    tempCoefficient: -0.35,
+    noct: 45,
+    inverterEff: 97.8,
+    soilingWiringLoss: 3.2
   };
 
-  // Weather & Irradiance metrics (Live BMKG / OpenWeather Model)
   let weatherCurrent = {
     source: 'BMKG Stasiun Klimatologi DKI Jakarta / Depok',
     stationId: 'BMKG-96749 (Radius 4.2 km)',
     updateTime: '14:30 WIB (Sinkronisasi Model 06:00 WIB)',
-    tempAmbient: 33.5, // °C
-    irradianceGhi: 790, // W/m²
-    irradiancePoa: 845, // W/m² (POA 15°)
-    cloudCoverTotal: 18, // %
+    tempAmbient: 33.5,
+    irradianceGhi: 790,
+    irradiancePoa: 845,
+    cloudCoverTotal: 18,
     cloudLow: 8,
     cloudMid: 10,
-    humidity: 68, // %
-    windSpeed: 12, // km/h
-    uvIndex: 8.5, // Very High
+    humidity: 68,
+    windSpeed: 12,
+    uvIndex: 8.5,
     airQualityIndex: 'Sedang (AQI 64)',
-    phel: 4.42 // Peak Sun Hours
+    phel: 4.42
   };
 
   function switchWeatherSource(source: 'BMKG' | 'OpenWeather') {
@@ -350,25 +333,13 @@
     }
   }
 
-  // 1. Dynamic Cell Temperature (Sandia / King Model)
   $: calculatedCellTemp = weatherCurrent.tempAmbient + (weatherCurrent.irradiancePoa / 800) * (pvSystemSpecs.noct - 20);
-  
-  // 2. Thermal Loss Percentage (%)
   $: thermalLossPct = Math.max(0, (calculatedCellTemp - 25) * Math.abs(pvSystemSpecs.tempCoefficient));
-  
-  // 3. Theoretical Potential (Tanpa rugi-rugi)
   $: theoreticalPvPotentialKw = (pvSystemSpecs.installedCapacityWp / 1000) * (weatherCurrent.irradiancePoa / 1000);
-  
-  // 4. Technical Potential (Setelah Rugi Suhu, Kabel & Inverter)
   $: technicalPvPotentialKw = theoreticalPvPotentialKw * (1 - thermalLossPct / 100) * (pvSystemSpecs.inverterEff / 100) * (1 - pvSystemSpecs.soilingWiringLoss / 100);
-  
-  // 5. Output Riil Saat Ini
   $: currentActualKw = effectivePv;
-  
-  // 6. Real-time Potential Realization (Performance Ratio Sesaat %)
   $: potentialRealizationRatio = technicalPvPotentialKw > 0 ? Math.min(100, (currentActualKw / technicalPvPotentialKw) * 100) : 0;
 
-  // Hourly Dataset (06:00 - 18:00)
   const hourlyForecastData = [
     { time: '06:00', weather: 'Cerah', icon: 'sun', irradiance: 45, temp: 26.2, clouds: 10, predictedKw: 0.28, actualKw: 0.25 },
     { time: '07:00', weather: 'Cerah', icon: 'sun', irradiance: 185, temp: 27.8, clouds: 12, predictedKw: 1.18, actualKw: 1.15 },
@@ -385,7 +356,6 @@
     { time: '18:00', weather: 'Mendung', icon: 'cloudy', irradiance: 0, temp: 27.0, clouds: 75, predictedKw: 0.00, actualKw: null }
   ];
 
-  // 7-Day Forecast Dataset
   const weeklyForecastData = [
     { day: 'Hari Ini', date: '17 Okt', weather: 'Cerah Berawan', icon: 'partly-cloudy', psh: 4.42, avgIrradiance: 845, predictedKwh: 31.40, actualKwh: 27.80, tempMinMax: '25° / 35°C', cloudCover: 22, confidence: 96, recommendation: 'Optimal untuk ekspor siang & pengisian penuh ESS' },
     { day: 'Sabtu', date: '18 Okt', weather: 'Cerah Dominan', icon: 'sun', psh: 4.85, avgIrradiance: 890, predictedKwh: 34.20, actualKwh: null, tempMinMax: '25° / 36°C', cloudCover: 12, confidence: 94, recommendation: 'Pembangkitan puncak, disarankan kurangi curtailment' },
@@ -396,32 +366,39 @@
     { day: 'Kamis', date: '23 Okt', weather: 'Cerah', icon: 'sun', psh: 4.75, avgIrradiance: 865, predictedKwh: 33.50, actualKwh: null, tempMinMax: '25° / 35°C', cloudCover: 15, confidence: 86, recommendation: 'Potensi pembangkitan tinggi, pengujian performansi rutin' }
   ];
 
-  // Aggregated Weekly Totals
   $: totalWeeklyPredictedKwh = weeklyForecastData.reduce((acc, cur) => acc + cur.predictedKwh, 0);
   $: avgDailyPredictedKwh = (totalWeeklyPredictedKwh / weeklyForecastData.length).toFixed(1);
-  $: estimatedWeeklyRevenue = Math.round(totalWeeklyPredictedKwh * 1444.7).toLocaleString('id-ID'); // Tarif PLN Rp 1.444,70 / kWh
-  $: estimatedWeeklyCo2Reduction = (totalWeeklyPredictedKwh * 0.794).toFixed(1); // 0.794 kg CO2 / kWh
+  $: estimatedWeeklyRevenue = Math.round(totalWeeklyPredictedKwh * 1444.7).toLocaleString('id-ID');
+  $: estimatedWeeklyCo2Reduction = (totalWeeklyPredictedKwh * 0.794).toFixed(1);
 
-  // ECharts Option: Hourly Curve (Dual Axis)
+  // Common Light Theme Tooltip styling
+  const lightTooltipStyle = {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    padding: [8, 12],
+    textStyle: { color: '#0f172a', fontSize: 11 },
+    extraCssText: 'box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); border-radius: 8px;'
+  };
+
+  // ECharts Option: Hourly Curve
   $: hourlyPredictionChartOption = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1e1e1e',
-      borderColor: '#383838',
-      textStyle: { color: '#e5e5e5', fontSize: 11 },
-      axisPointer: { type: 'cross', lineStyle: { color: '#555', type: 'dashed' } },
+      ...lightTooltipStyle,
+      axisPointer: { type: 'cross', lineStyle: { color: '#94a3b8', type: 'dashed' } },
       formatter: (params: any[]) => {
-        let title = `<div style="font-weight:600;margin-bottom:6px;color:#fff;border-bottom:1px solid #333;padding-bottom:3px;">Jam ${params[0].axisValue} WIB</div>`;
+        let title = `<div style="font-weight:600;margin-bottom:6px;color:#0f172a;border-bottom:1px solid #f1f5f9;padding-bottom:3px;">Jam ${params[0].axisValue} WIB</div>`;
         params.forEach(p => {
           let val = p.value !== null && p.value !== undefined ? p.value : '-';
           let unit = p.seriesName.includes('Radiasi') ? ' W/m²' : ' kW';
           title += `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin:3px 0;">
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.color};"></span>
-              <span style="color:#a3a3a3;">${p.seriesName}</span>
+              <span style="color:#64748b;">${p.seriesName}</span>
             </div>
-            <b style="color:#fff;">${val}${unit}</b>
+            <b style="color:#0f172a;">${val}${unit}</b>
           </div>`;
         });
         return title;
@@ -429,7 +406,7 @@
     },
     legend: {
       data: ['Daya Riil (kW)', 'Prediksi Model (kW)', 'Potensi Radiasi (W/m²)'],
-      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      textStyle: { color: '#64748b', fontSize: 11 },
       top: 0,
       right: 10
     },
@@ -438,26 +415,26 @@
       type: 'category',
       boundaryGap: false,
       data: hourlyForecastData.map(h => h.time),
-      axisLine: { lineStyle: { color: '#333333' } },
-      axisLabel: { color: '#737373', fontSize: 10 }
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLabel: { color: '#64748b', fontSize: 10 }
     },
     yAxis: [
       {
         type: 'value',
         name: 'Daya (kW)',
-        nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, -10] },
+        nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, 0, 0, -10] },
         min: 0,
         max: 7.5,
-        axisLabel: { color: '#737373', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+        axisLabel: { color: '#64748b', fontSize: 10 },
+        splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } }
       },
       {
         type: 'value',
         name: 'Radiasi (W/m²)',
-        nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, 10] },
+        nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, 0, 0, 20] },
         min: 0,
-        max: 1200,
-        axisLabel: { color: '#737373', fontSize: 10 },
+        max: 1000,
+        axisLabel: { color: '#64748b', fontSize: 10 },
         splitLine: { show: false }
       }
     ],
@@ -466,14 +443,16 @@
         name: 'Daya Riil (kW)',
         type: 'line',
         smooth: true,
-        showSymbol: false,
-        lineStyle: { color: '#22c55e', width: 2.5 },
+        showSymbol: true,
+        symbolSize: 5,
+        itemStyle: { color: '#10b981' },
+        lineStyle: { color: '#10b981', width: 2.5 },
         areaStyle: {
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(34, 197, 94, 0.22)' },
-              { offset: 1, color: 'rgba(34, 197, 94, 0.0)' }
+              { offset: 0, color: 'rgba(16, 185, 129, 0.25)' },
+              { offset: 1, color: 'rgba(16, 185, 129, 0.0)' }
             ]
           }
         },
@@ -493,25 +472,23 @@
         yAxisIndex: 1,
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#38bdf8', width: 1.5, type: 'dotted' },
+        lineStyle: { color: '#0284c7', width: 1.5, type: 'dotted' },
         data: hourlyForecastData.map(h => h.irradiance)
       }
     ]
   };
 
-  // ECharts Option: Weekly Forecast (Bar + PSH Line)
+  // ECharts Option: Weekly Forecast
   $: weeklyPredictionChartOption = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1e1e1e',
-      borderColor: '#383838',
-      textStyle: { color: '#e5e5e5', fontSize: 11 },
+      ...lightTooltipStyle,
       axisPointer: { type: 'shadow' }
     },
     legend: {
       data: ['Estimasi Energi (kWh)', 'Jam Matahari Puncak (PSH)'],
-      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      textStyle: { color: '#64748b', fontSize: 11 },
       top: 0,
       right: 10
     },
@@ -519,26 +496,26 @@
     xAxis: {
       type: 'category',
       data: weeklyForecastData.map(w => `${w.day}\n${w.date}`),
-      axisLine: { lineStyle: { color: '#333333' } },
-      axisLabel: { color: '#737373', fontSize: 10 }
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLabel: { color: '#64748b', fontSize: 10 }
     },
     yAxis: [
       {
         type: 'value',
         name: 'Energi (kWh)',
-        nameTextStyle: { color: '#737373', fontSize: 10 },
+        nameTextStyle: { color: '#64748b', fontSize: 10 },
         min: 0,
         max: 45,
-        axisLabel: { color: '#737373', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+        axisLabel: { color: '#64748b', fontSize: 10 },
+        splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } }
       },
       {
         type: 'value',
         name: 'PSH (Jam)',
-        nameTextStyle: { color: '#737373', fontSize: 10 },
+        nameTextStyle: { color: '#64748b', fontSize: 10 },
         min: 0,
         max: 6,
-        axisLabel: { color: '#737373', fontSize: 10 },
+        axisLabel: { color: '#64748b', fontSize: 10 },
         splitLine: { show: false }
       }
     ],
@@ -552,7 +529,7 @@
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
               { offset: 0, color: '#ff4f00' },
-              { offset: 1, color: 'rgba(255, 79, 0, 0.35)' }
+              { offset: 1, color: '#fed7aa' }
             ]
           },
           borderRadius: [4, 4, 0, 0]
@@ -566,8 +543,8 @@
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        lineStyle: { color: '#38bdf8', width: 2 },
-        itemStyle: { color: '#38bdf8' },
+        lineStyle: { color: '#0284c7', width: 2 },
+        itemStyle: { color: '#0284c7' },
         data: weeklyForecastData.map(w => w.psh)
       }
     ]
@@ -600,24 +577,22 @@
     return data;
   }
 
-  // 1. POWER CURVE OPTION
+  // 1. POWER CURVE OPTION (Clean Light Theme)
   $: powerCurveOption = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1e1e1e',
-      borderColor: '#383838',
-      textStyle: { color: '#e5e5e5', fontSize: 11 },
-      axisPointer: { type: 'cross', lineStyle: { color: '#444', type: 'dashed' } },
+      ...lightTooltipStyle,
+      axisPointer: { type: 'cross', lineStyle: { color: '#94a3b8', type: 'dashed' } },
       formatter: (params: any[]) => {
-        let title = `<div style="font-weight:600;margin-bottom:6px;color:#fff;border-bottom:1px solid #333;padding-bottom:3px;">Jam ${params[0].axisValue} WIB</div>`;
+        let title = `<div style="font-weight:600;margin-bottom:6px;color:#0f172a;border-bottom:1px solid #f1f5f9;padding-bottom:3px;">Jam ${params[0].axisValue} WIB</div>`;
         params.forEach(p => {
           title += `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin:3px 0;">
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.color};"></span>
-              <span style="color:#a3a3a3;">${p.seriesName}</span>
+              <span style="color:#64748b;">${p.seriesName}</span>
             </div>
-            <b style="color:#fff;">${p.value} kW</b>
+            <b style="color:#0f172a;">${p.value} kW</b>
           </div>`;
         });
         return title;
@@ -625,7 +600,7 @@
     },
     legend: {
       data: ['PV Output (kW)', 'Konsumsi Beban (kW)', 'Baterai ESS (kW)', 'Grid PLN (kW)'],
-      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      textStyle: { color: '#64748b', fontSize: 11 },
       top: 0,
       left: 'center'
     },
@@ -634,15 +609,15 @@
       type: 'category',
       boundaryGap: false,
       data: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '23:59'],
-      axisLine: { lineStyle: { color: '#333333' } },
-      axisLabel: { color: '#737373', fontSize: 10 }
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLabel: { color: '#64748b', fontSize: 10 }
     },
     yAxis: {
       type: 'value',
       name: 'Daya (kW)',
-      nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, -10] },
-      axisLabel: { color: '#737373', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+      nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, 0, 0, -10] },
+      axisLabel: { color: '#64748b', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } }
     },
     series: [
       {
@@ -655,7 +630,7 @@
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(255, 79, 0, 0.28)' },
+              { offset: 0, color: 'rgba(255, 79, 0, 0.22)' },
               { offset: 1, color: 'rgba(255, 79, 0, 0.0)' }
             ]
           }
@@ -667,7 +642,7 @@
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#38bdf8', width: 2 },
+        lineStyle: { color: '#0284c7', width: 2 },
         data: [0.85, 0.82, 0.80, 0.95, 1.45, 1.78, 1.82, 1.36, 1.62, 1.85, 1.40, 1.10, 0.90]
       },
       {
@@ -675,7 +650,7 @@
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#22c55e', width: 2, type: 'dashed' },
+        lineStyle: { color: '#10b981', width: 2, type: 'dashed' },
         data: [0, 0, 0, 0, 0.85, 1.80, 2.10, 0.76, -0.45, -0.92, -0.65, -0.20, 0]
       },
       {
@@ -683,7 +658,7 @@
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#a855f7', width: 1.5 },
+        lineStyle: { color: '#8b5cf6', width: 1.5 },
         data: [0.85, 0.82, 0.80, 0.67, -0.42, -1.64, -1.90, -0.93, 0.58, 0.93, 0.75, 0.90, 0.90]
       }
     ]
@@ -694,14 +669,12 @@
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1e1e1e',
-      borderColor: '#383838',
-      textStyle: { color: '#e5e5e5', fontSize: 11 },
+      ...lightTooltipStyle,
       axisPointer: { type: 'shadow' }
     },
     legend: {
       data: ['Produksi PV (kWh)', 'Konsumsi Beban (kWh)', 'Ekspor Grid (kWh)', 'Performance Ratio (PR %)'],
-      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      textStyle: { color: '#64748b', fontSize: 11 },
       top: 0,
       left: 'center'
     },
@@ -709,24 +682,24 @@
     xAxis: {
       type: 'category',
       data: ['11 Okt', '12 Okt', '13 Okt', '14 Okt', '15 Okt', '16 Okt', '17 Okt (Hari Ini)'],
-      axisLine: { lineStyle: { color: '#333333' } },
-      axisLabel: { color: '#737373', fontSize: 10 }
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLabel: { color: '#64748b', fontSize: 10 }
     },
     yAxis: [
       {
         type: 'value',
         name: 'Energi (kWh)',
-        nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, -10] },
-        axisLabel: { color: '#737373', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+        nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, 0, 0, -10] },
+        axisLabel: { color: '#64748b', fontSize: 10 },
+        splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } }
       },
       {
         type: 'value',
         name: 'PR (%)',
-        nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, 15] },
+        nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, 0, 0, 15] },
         min: 60,
         max: 100,
-        axisLabel: { color: '#737373', fontSize: 10, formatter: '{value}%' },
+        axisLabel: { color: '#64748b', fontSize: 10, formatter: '{value}%' },
         splitLine: { show: false }
       }
     ],
@@ -742,14 +715,14 @@
         name: 'Konsumsi Beban (kWh)',
         type: 'bar',
         barWidth: '22%',
-        itemStyle: { color: '#38bdf8', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: '#0284c7', borderRadius: [3, 3, 0, 0] },
         data: [15.8, 16.2, 15.4, 17.1, 16.8, 14.5, 16.42]
       },
       {
         name: 'Ekspor Grid (kWh)',
         type: 'bar',
         barWidth: '22%',
-        itemStyle: { color: '#22c55e', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: '#10b981', borderRadius: [3, 3, 0, 0] },
         data: [12.6, 14.0, 11.1, 14.7, 12.6, 17.6, 14.8]
       },
       {
@@ -771,14 +744,12 @@
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1e1e1e',
-      borderColor: '#383838',
-      textStyle: { color: '#e5e5e5', fontSize: 11 },
-      axisPointer: { type: 'cross', lineStyle: { color: '#444', type: 'dashed' } }
+      ...lightTooltipStyle,
+      axisPointer: { type: 'cross', lineStyle: { color: '#94a3b8', type: 'dashed' } }
     },
     legend: {
       data: ['Hari Ini (17 Okt)', 'Kemarin (16 Okt)', 'Rata-rata Historis', 'Target STC (7.1 kWp)'],
-      textStyle: { color: '#a3a3a3', fontSize: 11 },
+      textStyle: { color: '#64748b', fontSize: 11 },
       top: 0,
       left: 'center'
     },
@@ -787,16 +758,16 @@
       type: 'category',
       boundaryGap: false,
       data: ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
-      axisLine: { lineStyle: { color: '#333333' } },
-      axisLabel: { color: '#737373', fontSize: 10 }
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLabel: { color: '#64748b', fontSize: 10 }
     },
     yAxis: {
       type: 'value',
       name: 'Daya (kW)',
-      nameTextStyle: { color: '#737373', fontSize: 10, padding: [0, 0, 0, -10] },
+      nameTextStyle: { color: '#64748b', fontSize: 10, padding: [0, 0, 0, -10] },
       max: 7.5,
-      axisLabel: { color: '#737373', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#262626', type: 'dashed' } }
+      axisLabel: { color: '#64748b', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } }
     },
     series: [
       {
@@ -809,7 +780,7 @@
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(255, 79, 0, 0.25)' },
+              { offset: 0, color: 'rgba(255, 79, 0, 0.22)' },
               { offset: 1, color: 'rgba(255, 79, 0, 0.0)' }
             ]
           }
@@ -821,7 +792,7 @@
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#737373', width: 1.8, type: 'dashed' },
+        lineStyle: { color: '#94a3b8', width: 1.8, type: 'dashed' },
         data: [0.22, 1.05, 2.40, 4.10, 4.80, 5.30, 5.25, 4.90, 4.50, 2.90, 1.40, 0.35, 0.0]
       },
       {
@@ -829,7 +800,7 @@
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#38bdf8', width: 1.5, type: 'dotted' },
+        lineStyle: { color: '#0284c7', width: 1.5, type: 'dotted' },
         data: [0.25, 1.10, 2.55, 4.25, 5.00, 5.50, 5.60, 5.20, 4.70, 3.10, 1.55, 0.40, 0.0]
       },
       {
@@ -837,7 +808,7 @@
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#22c55e', width: 1, type: 'dashed' },
+        lineStyle: { color: '#10b981', width: 1.2, type: 'dashed' },
         data: [0.35, 1.30, 2.80, 4.60, 5.40, 6.00, 6.10, 5.80, 5.20, 3.50, 1.80, 0.50, 0.0]
       }
     ]
@@ -848,28 +819,26 @@
     backgroundColor: 'transparent',
     tooltip: {
       position: 'top',
-      backgroundColor: '#1e1e1e',
-      borderColor: '#383838',
-      textStyle: { color: '#e5e5e5', fontSize: 11 },
+      ...lightTooltipStyle,
       formatter: (p: any) => {
-        return `<div style="font-weight:600;margin-bottom:3px;color:#fff;">${heatmapDays[p.value[1]]} · Jam ${heatmapHours[p.value[0]]} WIB</div>
-        <div style="color:#a3a3a3;">Intensitas Daya: <b style="color:#ff4f00;">${p.value[2]} kW</b></div>`;
+        return `<div style="font-weight:600;margin-bottom:3px;color:#0f172a;">${heatmapDays[p.value[1]]} · Jam ${heatmapHours[p.value[0]]} WIB</div>
+        <div style="color:#64748b;">Intensitas Daya: <b style="color:#ff4f00;">${p.value[2]} kW</b></div>`;
       }
     },
     grid: { top: 15, right: 30, bottom: 55, left: 65 },
     xAxis: {
       type: 'category',
       data: heatmapHours,
-      splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.01)', 'rgba(0,0,0,0.05)'] } },
-      axisLine: { lineStyle: { color: '#333333' } },
-      axisLabel: { color: '#737373', fontSize: 10 }
+      splitArea: { show: true, areaStyle: { color: ['rgba(241, 245, 249, 0.4)', 'rgba(255, 255, 255, 0.8)'] } },
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLabel: { color: '#64748b', fontSize: 10 }
     },
     yAxis: {
       type: 'category',
       data: heatmapDays,
       splitArea: { show: true },
-      axisLine: { lineStyle: { color: '#333333' } },
-      axisLabel: { color: '#a3a3a3', fontSize: 10 }
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLabel: { color: '#64748b', fontSize: 10 }
     },
     visualMap: {
       min: 0,
@@ -879,9 +848,9 @@
       left: 'center',
       bottom: 2,
       text: ['6.2 kW (Puncak)', '0 kW'],
-      textStyle: { color: '#737373', fontSize: 10 },
+      textStyle: { color: '#64748b', fontSize: 10 },
       inRange: {
-        color: ['#1c1c1c', '#381f10', '#7c2d12', '#c2410c', '#ea580c', '#ff4f00']
+        color: ['#f8fafc', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ff4f00']
       }
     },
     series: [
@@ -892,19 +861,19 @@
         label: {
           show: true,
           formatter: (p: any) => p.value[2] > 0.5 ? `${p.value[2]}` : '',
-          color: '#e5e5e5',
+          color: '#334155',
           fontSize: 10
         },
         itemStyle: {
-          borderColor: '#1e1e1e',
+          borderColor: '#ffffff',
           borderWidth: 2,
           borderRadius: 3
         },
         emphasis: {
           itemStyle: {
             shadowBlur: 10,
-            shadowColor: 'rgba(0, 0, 0, 0.8)',
-            borderColor: '#ffffff',
+            shadowColor: 'rgba(0, 0, 0, 0.15)',
+            borderColor: '#ff4f00',
             borderWidth: 1.5
           }
         }
@@ -920,815 +889,852 @@
 </script>
 
 <svelte:head>
-  <title>Plant Detail - {plantName}</title>
+  <title>Plant Detail - {plantName} | RESS Monitoring</title>
 </svelte:head>
 
-<!-- Clean, Minimalist Enterprise Dark Dashboard -->
-<div class="min-h-screen bg-[#1c1c1c] text-[#d4d4d4] font-sans flex flex-col overflow-x-hidden selection:bg-[#ff4f00] selection:text-white">
+<!-- Global App Shell Layout: Unified Sidebar + Main View -->
+<div class="page-shell min-h-screen bg-[#f3f7f8] text-[#1a3449] font-sans flex flex-col overflow-x-hidden selection:bg-[#ff4f00] selection:text-white">
   
-  <!-- Top Navigation Bar -->
-  <header class="flex items-center justify-between px-5 h-14 border-b border-[#2d2d2d] bg-[#1a1a1a] sticky top-0 z-50">
-    <div class="flex items-center gap-3">
-      <a href="/plant" class="text-[#888] hover:text-white transition-colors" aria-label="Go back">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-        </svg>
+  <!-- Fixed Left Sidebar (Standard RESS Unified Navigation) -->
+  <aside class="sidebar {menuOpen ? 'open' : ''} fixed inset-y-0 left-0 z-30 flex w-[72px] flex-col border-r border-[#0096d6] bg-[#00b7ff]">
+    <div class="flex h-14 items-center justify-center border-b border-[#0096d6] text-2xl text-white font-bold">
+      ☼
+    </div>
+    <nav class="mt-2 flex flex-1 flex-col gap-1 px-2">
+      <a class="nav-button" href="/dashboard" title="Home">
+        <span class="nav-glyph">⌂</span>
+        <span>Home</span>
       </a>
-      <h1 class="text-base font-semibold text-white flex items-center gap-2 tracking-tight">
-        {plantName}
-        <span class="bg-[#12281e] text-[#22c55e] text-[10px] px-2 py-0.5 rounded font-medium border border-[#1b4332]">Running</span>
-      </h1>
-      <button class="text-[#666] hover:text-white" aria-label="Plant selector">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-        </svg>
-      </button>
-    </div>
+      <a class="nav-button current" href="/plant" title="Plants">
+        <span class="nav-glyph">▦</span>
+        <span>Plants</span>
+      </a>
+      <a class="nav-button" href="/devices" title="Devices">
+        <span class="nav-glyph">▤</span>
+        <span>Devices</span>
+      </a>
+      <a class="nav-button" href="/maintenance" title="Maintenance">
+        <span class="nav-glyph">⌁</span>
+        <span>Maintenance</span>
+      </a>
+      <a class="nav-button" href="/report" title="Reports">
+        <span class="nav-glyph">▧</span>
+        <span>Reports</span>
+      </a>
+      <a class="nav-button" href="/settings" title="Settings">
+        <span class="nav-glyph">⚙</span>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <a href="/support" class="nav-button mx-2 mb-3" title="Support">
+      <span class="nav-glyph">?</span>
+      <span>Support</span>
+    </a>
+  </aside>
+
+  <!-- Main View Area (Offset by Sidebar on Desktop) -->
+  <div class="flex-1 flex flex-col lg:pl-[72px]">
     
-    <div class="flex items-center gap-3">
-      <div class="flex items-center bg-[#252525] rounded-full px-2.5 py-1 gap-2 border border-[#333]">
-        <div class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></div>
-        <span class="text-[11px] text-[#a3a3a3]">Online</span>
+    <!-- Clean Bright Top Navigation Bar -->
+    <header class="flex items-center justify-between px-5 sm:px-6 h-14 border-b border-[#e2e8f0] bg-white sticky top-0 z-40 shadow-sm">
+      <div class="flex items-center gap-3">
+        <!-- Mobile hamburger -->
+        <button 
+          class="lg:hidden p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100" 
+          on:click={() => menuOpen = !menuOpen}
+          aria-label="Toggle Menu"
+        >
+          ☰
+        </button>
+
+        <!-- Back to Plant List -->
+        <a 
+          href="/plant" 
+          class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0284c7] hover:text-[#0369a1] bg-sky-50 hover:bg-sky-100 px-2.5 py-1.5 rounded-lg border border-sky-100 transition-colors" 
+          aria-label="Go back to Plant List"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+          <span class="hidden sm:inline">Plants</span>
+        </a>
+
+        <div class="h-4 w-px bg-slate-200"></div>
+
+        <!-- Plant Title & Status Pill -->
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-bold text-[#0f172a] flex items-center gap-2 tracking-tight">
+            {plantName}
+          </h1>
+          <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-semibold border border-emerald-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Normal · Running
+          </span>
+        </div>
+
+        <!-- Plant Switcher Dropdown -->
+        <select 
+          class="hidden md:inline-block text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 font-medium outline-none cursor-pointer hover:border-slate-300"
+          value={plantName}
+          on:change={(e) => goto(`/plant/${encodeURIComponent(e.currentTarget.value)}`)}
+          title="Ganti Plant"
+        >
+          <option value="PLTS Gedung 3 FT">PLTS Gedung 3 FT</option>
+          <option value="PLTS di Indomaker">PLTS di Indomaker</option>
+        </select>
       </div>
-      <button class="text-[#888] hover:text-white p-1" title="Share">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-        </svg>
-      </button>
-      <button class="text-[#888] hover:text-white p-1" title="Settings">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </button>
-    </div>
-  </header>
-  
-  <!-- Interactive Tabs -->
-  <nav class="flex gap-6 px-5 h-11 items-center border-b border-[#2d2d2d] bg-[#1a1a1a] text-xs font-medium sticky top-14 z-40">
-    <button 
-      class="h-full border-b-2 px-1 transition-colors {activeTab === 'Dashboard' ? 'border-[#ff4f00] text-white font-semibold' : 'border-transparent text-[#888] hover:text-[#d4d4d4]'}"
-      on:click={() => activeTab = 'Dashboard'}
-    >
-      Dashboard
-    </button>
+      
+      <!-- Right Quick Tools -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="flex items-center bg-slate-100 rounded-full px-2.5 py-1 gap-1.5 border border-slate-200">
+          <div class="w-2 h-2 rounded-full bg-[#10b981]"></div>
+          <span class="text-[11px] font-medium text-slate-600">Online</span>
+        </div>
+
+        <button 
+          class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" 
+          title="Perbarui Data"
+          on:click={() => showToast('Data telemetry plant diperbarui')}
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+
+        <a 
+          href="/report" 
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-xs font-semibold text-[#ff4f00] transition-colors"
+          title="Buka Laporan Terperinci"
+        >
+          <span>Laporan</span>
+          <span class="text-[10px]">↗</span>
+        </a>
+      </div>
+    </header>
     
-    <button 
-      class="h-full border-b-2 px-1 transition-colors flex items-center gap-1.5 {activeTab === 'Kontrol Energi' ? 'border-[#ff4f00] text-white font-semibold' : 'border-transparent text-[#888] hover:text-[#d4d4d4]'}"
-      on:click={() => activeTab = 'Kontrol Energi'}
-    >
-      Kontrol Energi
-      <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
-    </button>
+    <!-- Clean Interactive Sub-Tabs Bar -->
+    <nav class="flex gap-6 px-5 sm:px-6 h-11 items-center border-b border-[#e2e8f0] bg-white text-xs font-medium sticky top-14 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] overflow-x-auto">
+      <button 
+        class="h-full border-b-2 px-1 transition-colors whitespace-nowrap {activeTab === 'Dashboard' ? 'border-[#ff4f00] text-[#ff4f00] font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'}"
+        on:click={() => activeTab = 'Dashboard'}
+      >
+        Dashboard
+      </button>
+      
+      <button 
+        class="h-full border-b-2 px-1 transition-colors flex items-center gap-1.5 whitespace-nowrap {activeTab === 'Kontrol Energi' ? 'border-[#ff4f00] text-[#ff4f00] font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'}"
+        on:click={() => activeTab = 'Kontrol Energi'}
+      >
+        Kontrol Energi
+        <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
+      </button>
 
-    <button 
-      class="h-full border-b-2 px-1 transition-colors flex items-center gap-1.5 {activeTab === 'Prediksi & Analitik' ? 'border-[#ff4f00] text-white font-semibold' : 'border-transparent text-[#888] hover:text-[#d4d4d4]'}"
-      on:click={() => activeTab = 'Prediksi & Analitik'}
-    >
-      Prediksi & Analitik
-      <span class="px-1.5 py-0.5 rounded text-[9px] font-medium bg-[#16231a] text-[#22c55e] border border-[#1b4332]">BMKG / AI</span>
-    </button>
+      <button 
+        class="h-full border-b-2 px-1 transition-colors flex items-center gap-1.5 whitespace-nowrap {activeTab === 'Prediksi & Analitik' ? 'border-[#ff4f00] text-[#ff4f00] font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'}"
+        on:click={() => activeTab = 'Prediksi & Analitik'}
+      >
+        Prediksi & Analitik
+        <span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">BMKG / AI</span>
+      </button>
 
-    <button 
-      class="h-full border-b-2 px-1 transition-colors {activeTab === 'Devices' ? 'border-[#ff4f00] text-white font-semibold' : 'border-transparent text-[#888] hover:text-[#d4d4d4]'}"
-      on:click={() => activeTab = 'Devices'}
-    >
-      Devices
-    </button>
-    <button 
-      class="h-full border-b-2 px-1 transition-colors {activeTab === 'Alarms' ? 'border-[#ff4f00] text-white font-semibold' : 'border-transparent text-[#888] hover:text-[#d4d4d4]'}"
-      on:click={() => activeTab = 'Alarms'}
-    >
-      Alarms
-    </button>
-  </nav>
+      <button 
+        class="h-full border-b-2 px-1 transition-colors whitespace-nowrap {activeTab === 'Devices' ? 'border-[#ff4f00] text-[#ff4f00] font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'}"
+        on:click={() => activeTab = 'Devices'}
+      >
+        Devices
+      </button>
+      <button 
+        class="h-full border-b-2 px-1 transition-colors whitespace-nowrap {activeTab === 'Alarms' ? 'border-[#ff4f00] text-[#ff4f00] font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'}"
+        on:click={() => activeTab = 'Alarms'}
+      >
+        Alarms
+      </button>
+    </nav>
 
-  <!-- Main Content Area -->
-  <main class="flex-1 p-4 sm:p-6 w-full max-w-[1600px] mx-auto pb-20">
-    
-    {#if activeTab === 'Dashboard'}
-      <div class="flex flex-col gap-6">
-        <!-- Top Section: Visualizer & Cards -->
-        <div class="flex flex-col lg:flex-row gap-6">
+    <!-- Main Content Area: Bright & Elegant White Panels -->
+    <main class="flex-1 p-4 sm:p-6 w-full max-w-[1600px] mx-auto pb-20">
+      
+      {#if activeTab === 'Dashboard'}
+        <div class="flex flex-col gap-6">
           
-          <!-- Left Section: Elegant Power Flow Node Topology -->
-          <section class="flex-1 bg-[#222222] rounded-xl border border-[#2e2e2e] relative overflow-hidden flex flex-col min-h-[500px]">
+          <!-- Top Section: Visualizer & Overview Cards -->
+          <div class="flex flex-col lg:flex-row gap-6">
             
-            <!-- Header (Weather & Controls) -->
-            <div class="flex justify-between items-start p-5 z-20">
-              <div class="flex items-center gap-3">
-                <!-- Clean Sun SVG -->
-                <div class="w-9 h-9 rounded-lg bg-[#2a2a2a] border border-[#333] flex items-center justify-center text-[#ff4f00]">
-                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="5"></circle>
-                    <line x1="12" y1="1" x2="12" y2="3"></line>
-                    <line x1="12" y1="21" x2="12" y2="23"></line>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                    <line x1="1" y1="12" x2="3" y2="12"></line>
-                    <line x1="21" y1="12" x2="23" y2="12"></line>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                  </svg>
-                </div>
-                <div>
-                  <div class="flex items-baseline gap-2">
-                    <span class="font-medium text-white text-sm">{weather.desc}</span>
-                    <span class="text-base font-semibold text-white">{weather.temp}</span>
-                  </div>
-                  <div class="text-[11px] text-[#737373] mt-0.5">
-                    Angin: {weather.wind} · Kelembaban: {weather.humidity}
-                  </div>
-                </div>
-              </div>
+            <!-- Left Section: Clean White Visualizer Card -->
+            <section class="flex-1 bg-white rounded-xl border border-[#e2e8f0] shadow-sm relative overflow-hidden flex flex-col min-h-[520px]">
               
-              <div class="flex items-center gap-3 text-[11px] text-[#737373]">
-                <!-- Status Mode Badge -->
-                <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#333] text-[#a3a3a3] font-medium">
-                  <span class="w-1.5 h-1.5 rounded-full {controlMode === 'auto' ? 'bg-[#22c55e]' : 'bg-[#ff4f00]'}"></span>
-                  Mode: {controlMode === 'auto' ? 'Otomatis' : 'Manual'}
-                </span>
-
-                <span class="hidden md:inline">Update: {updateTime}</span>
-                <button class="text-[#737373] hover:text-white transition-colors" title="Perbarui" on:click={() => showToast('Data diperbarui')}>
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                  </svg>
-                </button>
-                <div class="flex bg-[#1a1a1a] rounded-lg p-0.5 border border-[#333] gap-0.5">
-                  <button 
-                    class="px-2 py-1 rounded text-[11px] transition-colors {viewMode === '3d' ? 'bg-[#2a2a2a] text-white font-medium' : 'text-[#737373] hover:text-white'}"
-                    on:click={() => viewMode = '3d'}
-                  >
-                    3D
-                  </button>
-                  <button 
-                    class="px-2 py-1 rounded text-[11px] transition-colors {viewMode === '2d' ? 'bg-[#2a2a2a] text-white font-medium' : 'text-[#737373] hover:text-white'}"
-                    on:click={() => viewMode = '2d'}
-                  >
-                    2D
-                  </button>
+              <!-- Header (Weather & Visualizer Controls) -->
+              <div class="flex justify-between items-start p-5 z-20 border-b border-slate-100 bg-white/90 backdrop-blur-sm">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="5"></circle>
+                      <line x1="12" y1="1" x2="12" y2="3"></line>
+                      <line x1="12" y1="21" x2="12" y2="23"></line>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                      <line x1="1" y1="12" x2="3" y2="12"></line>
+                      <line x1="21" y1="12" x2="23" y2="12"></line>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="flex items-baseline gap-2">
+                      <span class="font-semibold text-slate-800 text-sm">{weather.desc}</span>
+                      <span class="text-base font-bold text-slate-900">{weather.temp}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">
+                      Angin: {weather.wind} · Kelembaban: {weather.humidity}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            
-            <!-- Graphic Area -->
-            <div class="flex-1 relative flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-              
-              {#if viewMode === '3d'}
-                <!-- 3D Isometric Energy Flow Area (Pure Visual Animation) -->
-                <div class="relative w-full max-w-[660px] aspect-square flex items-center justify-center select-none fade-in">
-                  
-                  <!-- Soft Ambient Background Glow matching the house environment -->
-                  <div class="absolute inset-0 rounded-full bg-radial from-[#242c28]/40 via-[#1e2022]/20 to-transparent pointer-events-none blur-2xl"></div>
+                
+                <div class="flex items-center gap-3 text-[11px] text-slate-500">
+                  <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700 font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full {controlMode === 'auto' ? 'bg-emerald-500' : 'bg-orange-500'}"></span>
+                    Mode: {controlMode === 'auto' ? 'Otomatis' : 'Manual'}
+                  </span>
 
-                  <!-- Base 3D House Image with seamless radial vignette blending -->
-                  <img 
-                    src="/images/house-power-flow.jpg" 
-                    alt="Power Flow Diagram" 
-                    class="w-full h-full object-contain z-0 fade-in transition-opacity duration-700 {pvInverterEnabled ? 'opacity-95' : 'opacity-75'}" 
-                    style="mask-image: radial-gradient(ellipse 70% 68% at 50% 50%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 73%); -webkit-mask-image: radial-gradient(ellipse 70% 68% at 50% 50%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 73%);" 
-                  />
+                  <span class="hidden md:inline">Update: {updateTime}</span>
 
-                  <!-- Dynamic SVG Electrical Flow Overlay -->
-                  <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1024 1024" preserveAspectRatio="xMidYMid meet">
-                    <defs>
-                      <!-- Harmonious Cyber-Emerald Neon Glow Filter -->
-                      <filter id="glow-energy" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3.5" result="blur1" />
-                        <feGaussianBlur stdDeviation="1.5" result="blur2" />
-                        <feMerge>
-                          <feMergeNode in="blur1" />
-                          <feMergeNode in="blur2" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-
-                      <!-- Soft Cyan Glow for Grid -->
-                      <filter id="glow-grid" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3.5" result="blur1" />
-                        <feGaussianBlur stdDeviation="1.5" result="blur2" />
-                        <feMerge>
-                          <feMergeNode in="blur1" />
-                          <feMergeNode in="blur2" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                    </defs>
-
-                    <!-- ============================================== -->
-                    <!-- 1. BASE CONDUIT TRACKS (Blends into Architecture) -->
-                    <!-- ============================================== -->
-                    <!-- PV Rooftop Conduit Track -->
-                    <path d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" stroke="rgba(0,0,0,0.4)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" stroke={pvInverterEnabled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    
-                    <!-- PV Side Wall Conduit Track -->
-                    <path d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" stroke="rgba(0,0,0,0.35)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" stroke={pvInverterEnabled ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.05)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-
-                    <!-- Utility Grid Overhead Wire & Wall Conduit Track -->
-                    <path d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" stroke="rgba(0,0,0,0.4)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" stroke={pvInverterEnabled ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-
-                    <!-- Inverter to Baterai ESS Station Track -->
-                    <path d="M 685 650 L 685 690 L 730 735 L 758 775" stroke="rgba(0,0,0,0.4)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M 685 650 L 685 690 L 730 735 L 758 775" stroke={pvInverterEnabled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-
-                    <!-- Inverter to House Foundation / Beban Track -->
-                    <path d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" stroke="rgba(0,0,0,0.4)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" stroke={pvInverterEnabled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)"} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-
-                    <!-- ============================================== -->
-                    <!-- 2. DYNAMIC ELECTRIC FLOW (Active when Inverter is ON) -->
-                    <!-- ============================================== -->
-                    {#if pvInverterEnabled}
-                      <!-- A. Solar PV to Inverter Flow (Energi Surya Mengalir ke Inverter) -->
-                      {#if effectivePv > 0}
-                        <!-- Outer Neon Emerald Beam -->
-                        <path 
-                          d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" 
-                          stroke="#10b981" 
-                          stroke-width="2.6" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="14 26" 
-                          class={effectivePv > 2 ? 'flow-anim-forward-fast' : 'flow-anim-forward'} 
-                          filter="url(#glow-energy)" 
-                        />
-                        <!-- White-Hot Intense Energy Core Pulse -->
-                        <path 
-                          d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" 
-                          stroke="#ffffff" 
-                          stroke-width="1.2" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="5 35" 
-                          class={effectivePv > 2 ? 'flow-anim-forward-fast' : 'flow-anim-forward'} 
-                        />
-
-                        <!-- Secondary Conduit Stream -->
-                        <path 
-                          d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" 
-                          stroke="#10b981" 
-                          stroke-width="2.2" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="12 24" 
-                          class="flow-anim-forward" 
-                          filter="url(#glow-energy)" 
-                        />
-                        <path 
-                          d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" 
-                          stroke="#ffffff" 
-                          stroke-width="1" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="4 32" 
-                          class="flow-anim-forward" 
-                        />
-                      {/if}
-
-                      <!-- B. Utility Grid Flow (Impor PLN / Ekspor PLN) -->
-                      {#if gridPower > 0}
-                        <path 
-                          d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" 
-                          stroke={gridMode === 'export' ? '#10b981' : '#38bdf8'} 
-                          stroke-width="2.5" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="14 26" 
-                          class={gridMode === 'export' ? 'flow-anim-reverse' : 'flow-anim-forward'} 
-                          filter={gridMode === 'export' ? 'url(#glow-energy)' : 'url(#glow-grid)'} 
-                        />
-                        <path 
-                          d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" 
-                          stroke="#ffffff" 
-                          stroke-width="1.2" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="5 35" 
-                          class={gridMode === 'export' ? 'flow-anim-reverse' : 'flow-anim-forward'} 
-                        />
-                      {/if}
-
-                      <!-- C. Inverter to Beban Gedung Flow (Suplai Listrik Gedung) -->
-                      {#if totalLoadPower > 0}
-                        <path 
-                          d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" 
-                          stroke="#10b981" 
-                          stroke-width="2.5" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="14 26" 
-                          class="flow-anim-forward" 
-                          filter="url(#glow-energy)" 
-                        />
-                        <path 
-                          d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" 
-                          stroke="#ffffff" 
-                          stroke-width="1.2" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="5 35" 
-                          class="flow-anim-forward" 
-                        />
-                      {/if}
-
-                      <!-- D. Inverter to/from Baterai ESS Flow (Charge / Discharge) -->
-                      {#if batteryPower > 0 && batteryStatus !== 'standby'}
-                        <path 
-                          d="M 685 650 L 685 690 L 730 735 L 758 775" 
-                          stroke={batteryStatus === 'charging' ? '#10b981' : '#34d399'} 
-                          stroke-width="2.5" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="14 26" 
-                          class={batteryStatus === 'charging' ? 'flow-anim-forward' : 'flow-anim-reverse'} 
-                          filter="url(#glow-energy)" 
-                        />
-                        <path 
-                          d="M 685 650 L 685 690 L 730 735 L 758 775" 
-                          stroke="#ffffff" 
-                          stroke-width="1.2" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none" 
-                          stroke-dasharray="5 35" 
-                          class={batteryStatus === 'charging' ? 'flow-anim-forward' : 'flow-anim-reverse'} 
-                        />
-                      {/if}
-
-                      <!-- Subtle Energy Pulse on Inverter Wall Unit -->
-                      <circle cx="682" cy="592" r="26" fill="none" stroke="#10b981" class="inverter-ring" />
-                      <circle cx="682" cy="592" r="3.5" fill="#10b981" filter="url(#glow-energy)" />
-                      <!-- Digital Screen Glow on Inverter -->
-                      <rect x="670" y="602" width="24" height="12" rx="2" fill="#10b981" opacity="0.4" filter="url(#glow-energy)" />
-
-                    {:else}
-                      <!-- Inverter is OFF: Display Dark Standby State (Arus Listrik Mati) -->
-                      <circle cx="682" cy="592" r="3" fill="#ef4444" opacity="0.6" />
-                      <rect x="670" y="602" width="24" height="12" rx="2" fill="#ef4444" opacity="0.15" />
-                    {/if}
-
-                    <!-- Seamless Connection Junction Dots -->
-                    <circle cx="681" cy="535" r="2.5" fill={pvInverterEnabled && effectivePv > 0 ? "#10b981" : "#555"} />
-                    <circle cx="665" cy="650" r="2.5" fill={pvInverterEnabled ? "#10b981" : "#555"} />
-                    <circle cx="685" cy="650" r="2.5" fill={pvInverterEnabled ? "#10b981" : "#555"} />
-                    <circle cx="770" cy="580" r="3.5" fill={pvInverterEnabled && gridPower > 0 ? (gridMode === 'export' ? "#10b981" : "#38bdf8") : "#555"} />
-                  </svg>
-
-                  <!-- ============================================== -->
-                  <!-- 3. ELEGANT BLENDED TELEMETRY BADGES -->
-                  <!-- ============================================== -->
-                  <div class="absolute inset-0 z-20 pointer-events-none">
-                    
-                    <!-- Badge 1: PV Output (Top Array) -->
-                    <div 
-                      class="absolute top-[18%] left-[54%] flex flex-col items-center bg-[#141618]/75 px-3 py-1.5 rounded-xl border border-[#2e3438]/80 backdrop-blur-md shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
-                      on:click={() => showToast(`PV Output: ${effectivePv.toFixed(3)} kW`)}
-                      role="button"
-                      tabindex="0"
-                      on:keydown={(e) => e.key === 'Enter' && showToast(`PV Output: ${effectivePv.toFixed(3)} kW`)}
+                  <!-- 3D / 2D Segment Switch -->
+                  <div class="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 gap-0.5">
+                    <button 
+                      class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors {viewMode === '3d' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
+                      on:click={() => viewMode = '3d'}
                     >
-                      <div class="flex items-center gap-1.5 mb-0.5">
-                        <span class="w-1.5 h-1.5 rounded-full {effectivePv > 0 ? 'bg-[#10b981] animate-pulse' : 'bg-[#737373]'}"></span>
-                        <span class="text-[10px] text-[#10b981] font-semibold tracking-wide">PV Output</span>
+                      3D
+                    </button>
+                    <button 
+                      class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors {viewMode === '2d' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
+                      on:click={() => viewMode = '2d'}
+                    >
+                      2D
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Graphic Diagram Area (Bright Daylight Background) -->
+              <div class="flex-1 relative flex items-center justify-center p-2 sm:p-4 overflow-hidden bg-gradient-to-br from-slate-50/50 via-sky-50/20 to-amber-50/20">
+                
+                {#if viewMode === '3d'}
+                  <!-- 3D Isometric Energy Flow Area -->
+                  <div class="relative w-full max-w-[660px] aspect-square flex items-center justify-center select-none fade-in">
+                    
+                    <!-- Soft Daylight Ambient Glow -->
+                    <div class="absolute inset-0 rounded-full bg-radial from-amber-100/30 via-emerald-100/20 to-transparent pointer-events-none blur-2xl"></div>
+
+                    <!-- Base 3D House Image -->
+                    <img 
+                      src="/images/house-power-flow.jpg" 
+                      alt="Power Flow Diagram" 
+                      class="w-full h-full object-contain z-0 fade-in transition-opacity duration-700 {pvInverterEnabled ? 'opacity-95' : 'opacity-70'}" 
+                      style="mask-image: radial-gradient(ellipse 70% 68% at 50% 50%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 74%); -webkit-mask-image: radial-gradient(ellipse 70% 68% at 50% 50%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 74%);" 
+                    />
+
+                    <!-- Dynamic SVG Electrical Flow Overlay -->
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1024 1024" preserveAspectRatio="xMidYMid meet">
+                      <defs>
+                        <!-- Glow filters -->
+                        <filter id="glow-energy-light" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="blur1" />
+                          <feMerge>
+                            <feMergeNode in="blur1" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+
+                        <filter id="glow-grid-light" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="blur1" />
+                          <feMerge>
+                            <feMergeNode in="blur1" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                      </defs>
+
+                      <!-- 1. BASE CONDUIT TRACKS -->
+                      <path d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" stroke="rgba(15,23,42,0.18)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" stroke="rgba(15,23,42,0.18)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" stroke="rgba(15,23,42,0.18)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M 685 650 L 685 690 L 730 735 L 758 775" stroke="rgba(15,23,42,0.18)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" stroke="rgba(15,23,42,0.18)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+                      <!-- 2. DYNAMIC ELECTRIC FLOWS -->
+                      {#if pvInverterEnabled}
+                        <!-- A. Solar PV Flow -->
+                        {#if effectivePv > 0}
+                          <path 
+                            d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" 
+                            stroke="#059669" 
+                            stroke-width="3" 
+                            stroke-linecap="round" 
+                            stroke-linejoin="round" 
+                            fill="none" 
+                            stroke-dasharray="14 26" 
+                            class={effectivePv > 2 ? 'flow-anim-forward-fast' : 'flow-anim-forward'} 
+                            filter="url(#glow-energy-light)" 
+                          />
+                          <path 
+                            d="M 440 270 L 550 350 L 675 436 L 681 465 L 681 535" 
+                            stroke="#ffffff" 
+                            stroke-width="1.4" 
+                            stroke-linecap="round" 
+                            stroke-linejoin="round" 
+                            fill="none" 
+                            stroke-dasharray="5 35" 
+                            class={effectivePv > 2 ? 'flow-anim-forward-fast' : 'flow-anim-forward'} 
+                          />
+
+                          <path 
+                            d="M 655 442 L 614 468 L 614 690 L 665 690 L 665 650" 
+                            stroke="#059669" 
+                            stroke-width="2.6" 
+                            stroke-linecap="round" 
+                            stroke-linejoin="round" 
+                            fill="none" 
+                            stroke-dasharray="12 24" 
+                            class="flow-anim-forward" 
+                            filter="url(#glow-energy-light)" 
+                          />
+                        {/if}
+
+                        <!-- B. Grid PLN Flow -->
+                        {#if gridPower > 0}
+                          <path 
+                            d="M 852 365 Q 815 470 770 436 L 770 565 L 770 672 L 685 672 L 685 650" 
+                            stroke={gridMode === 'export' ? '#059669' : '#0284c7'} 
+                            stroke-width="3" 
+                            stroke-linecap="round" 
+                            stroke-linejoin="round" 
+                            fill="none" 
+                            stroke-dasharray="14 26" 
+                            class={gridMode === 'export' ? 'flow-anim-reverse' : 'flow-anim-forward'} 
+                            filter="url(#glow-energy-light)" 
+                          />
+                        {/if}
+
+                        <!-- C. Load Flow -->
+                        {#if totalLoadPower > 0}
+                          <path 
+                            d="M 665 650 L 665 690 L 614 690 L 480 690 L 390 710 L 290 765" 
+                            stroke="#059669" 
+                            stroke-width="3" 
+                            stroke-linecap="round" 
+                            stroke-linejoin="round" 
+                            fill="none" 
+                            stroke-dasharray="14 26" 
+                            class="flow-anim-forward" 
+                            filter="url(#glow-energy-light)" 
+                          />
+                        {/if}
+
+                        <!-- D. Battery Flow -->
+                        {#if batteryPower > 0 && batteryStatus !== 'standby'}
+                          <path 
+                            d="M 685 650 L 685 690 L 730 735 L 758 775" 
+                            stroke={batteryStatus === 'charging' ? '#059669' : '#10b981'} 
+                            stroke-width="3" 
+                            stroke-linecap="round" 
+                            stroke-linejoin="round" 
+                            fill="none" 
+                            stroke-dasharray="14 26" 
+                            class={batteryStatus === 'charging' ? 'flow-anim-forward' : 'flow-anim-reverse'} 
+                            filter="url(#glow-energy-light)" 
+                          />
+                        {/if}
+
+                        <!-- Inverter Pulse Indicator -->
+                        <circle cx="682" cy="592" r="26" fill="none" stroke="#059669" class="inverter-ring" />
+                        <circle cx="682" cy="592" r="4" fill="#059669" />
+                      {:else}
+                        <circle cx="682" cy="592" r="3.5" fill="#ef4444" />
+                      {/if}
+
+                      <circle cx="681" cy="535" r="3" fill={pvInverterEnabled && effectivePv > 0 ? "#059669" : "#94a3b8"} />
+                      <circle cx="665" cy="650" r="3" fill={pvInverterEnabled ? "#059669" : "#94a3b8"} />
+                      <circle cx="685" cy="650" r="3" fill={pvInverterEnabled ? "#059669" : "#94a3b8"} />
+                    </svg>
+
+                    <!-- 3. CRISP WHITE TELEMETRY BADGES -->
+                    <div class="absolute inset-0 z-20 pointer-events-none">
+                      
+                      <!-- Badge 1: PV Output -->
+                      <div 
+                        class="absolute top-[18%] left-[54%] flex flex-col items-center bg-white/95 px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-md backdrop-blur-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                        on:click={() => showToast(`PV Output: ${effectivePv.toFixed(3)} kW`)}
+                        role="button"
+                        tabindex="0"
+                        on:keydown={(e) => e.key === 'Enter' && showToast(`PV Output: ${effectivePv.toFixed(3)} kW`)}
+                      >
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                          <span class="w-2 h-2 rounded-full {effectivePv > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}"></span>
+                          <span class="text-[10px] text-emerald-700 font-bold tracking-wide">PV Output</span>
+                        </div>
+                        <span class="text-base sm:text-lg font-bold text-slate-900 tracking-tight">{effectivePv.toFixed(3)} <span class="text-[10px] text-slate-500 font-normal">kW</span></span>
                       </div>
-                      <span class="text-base sm:text-lg font-light text-white tracking-tight">{effectivePv.toFixed(3)} <span class="text-[10px] text-[#888]">kW</span></span>
+
+                      <!-- Badge 2: Grid PLN -->
+                      <div 
+                        class="absolute top-[29%] left-[25%] bg-white/95 px-3 py-1.5 rounded-xl border border-slate-200 text-center shadow-md backdrop-blur-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                        on:click={() => showToast(`Grid PLN: ${gridMode === 'export' ? 'Ekspor' : 'Impor'} ${gridPower.toFixed(2)} kW`)}
+                        role="button"
+                        tabindex="0"
+                        on:keydown={(e) => e.key === 'Enter' && showToast(`Grid PLN: ${gridPower.toFixed(2)} kW`)}
+                      >
+                        <span class="text-[9px] text-slate-500 block uppercase tracking-wider font-semibold">Grid PLN</span>
+                        <span class="text-xs font-bold {gridMode === 'export' ? 'text-emerald-600' : 'text-sky-600'}">{gridPower.toFixed(2)} kW</span>
+                        <span class="text-[9px] text-slate-500 block">{gridMode === 'export' ? 'Ekspor' : 'Impor'}</span>
+                      </div>
+
+                      <!-- Badge 3: Beban Gedung -->
+                      <div 
+                        class="absolute top-[78%] left-[25%] bg-white/95 px-3 py-1.5 rounded-xl border border-slate-200 text-center shadow-md backdrop-blur-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                        on:click={() => showToast(`Konsumsi Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                        role="button"
+                        tabindex="0"
+                        on:keydown={(e) => e.key === 'Enter' && showToast(`Konsumsi Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                      >
+                        <span class="text-[9px] text-slate-500 block uppercase tracking-wider font-semibold">Beban Gedung</span>
+                        <span class="text-xs font-bold text-slate-900">{totalLoadPower.toFixed(2)} kW</span>
+                        <span class="text-[9px] text-slate-500 block">{plantName.replace('PLTS ', '')}</span>
+                      </div>
+
+                      <!-- Badge 4: Baterai ESS -->
+                      <div 
+                        class="absolute top-[78%] left-[73%] bg-white/95 px-3 py-1.5 rounded-xl border border-slate-200 text-center shadow-md backdrop-blur-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                        on:click={() => showToast(`Baterai ESS: ${batterySoc}% (${batteryStatus})`)}
+                        role="button"
+                        tabindex="0"
+                        on:keydown={(e) => e.key === 'Enter' && showToast(`Baterai ESS: ${batterySoc}%`)}
+                      >
+                        <span class="text-[9px] text-slate-500 block uppercase tracking-wider font-semibold">Baterai ESS</span>
+                        <span class="text-xs font-bold text-emerald-600">{batterySoc}% ({batteryPower.toFixed(2)} kW)</span>
+                        <span class="text-[9px] text-slate-500 block capitalize">{batteryStatus}</span>
+                      </div>
+
                     </div>
 
-                    <!-- Badge 2: Grid PLN (Upper Left) -->
+                  </div>
+                
+                {:else}
+                  <!-- 2D Minimalist Circular Node Topology (Clean White Theme) -->
+                  <div class="w-full h-full flex flex-col items-center justify-center relative fade-in select-none">
+                    
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 520 320" preserveAspectRatio="xMidYMid meet">
+                      <defs>
+                        <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+                        </marker>
+                        <marker id="arrow-cyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0284c7" />
+                        </marker>
+                      </defs>
+
+                      <!-- PV to Inverter -->
+                      {#if pvInverterEnabled && effectivePv > 0}
+                        <line x1="260" y1="88" x2="260" y2="132" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)">
+                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" />
+                        </line>
+                      {:else}
+                        <line x1="260" y1="88" x2="260" y2="132" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3,3" />
+                      {/if}
+
+                      <!-- Inverter to Grid -->
+                      {#if pvInverterEnabled && gridPower > 0}
+                        {#if gridMode === 'export'}
+                          <line x1="228" y1="160" x2="148" y2="160" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)">
+                            <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
+                          </line>
+                        {:else}
+                          <line x1="148" y1="160" x2="228" y2="160" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-cyan)">
+                            <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
+                          </line>
+                        {/if}
+                      {:else}
+                        <line x1="148" y1="160" x2="228" y2="160" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3,3" />
+                      {/if}
+
+                      <!-- Inverter to Load -->
+                      {#if pvInverterEnabled && totalLoadPower > 0}
+                        <line x1="292" y1="160" x2="372" y2="160" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)">
+                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" />
+                        </line>
+                      {:else}
+                        <line x1="292" y1="160" x2="372" y2="160" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3,3" />
+                      {/if}
+
+                      <!-- Inverter to Battery -->
+                      {#if pvInverterEnabled && batteryPower > 0 && batteryStatus !== 'standby'}
+                        <line x1="260" y1="188" x2="260" y2="232" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)">
+                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
+                        </line>
+                      {:else}
+                        <line x1="260" y1="188" x2="260" y2="232" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="2,2" />
+                      {/if}
+                    </svg>
+
+                    <!-- Node 1: PV Solar (Top) -->
                     <div 
-                      class="absolute top-[29%] left-[25%] bg-[#141618]/75 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-[#2e3438]/80 text-center shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
-                      on:click={() => showToast(`Grid PLN: ${gridMode === 'export' ? 'Ekspor' : 'Impor'} ${gridPower.toFixed(2)} kW`)}
+                      class="absolute top-[6%] left-1/2 -translate-x-1/2 flex flex-col items-center justify-center w-[116px] h-[116px] rounded-full border-2 {pvInverterEnabled && effectivePv > 0 ? 'border-emerald-500 bg-emerald-50/70' : 'border-slate-300 bg-white'} z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
+                      on:click={() => showToast(`PV: ${effectivePv.toFixed(3)} kW`)}
                       role="button"
                       tabindex="0"
-                      on:keydown={(e) => e.key === 'Enter' && showToast(`Grid PLN: ${gridPower.toFixed(2)} kW`)}
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`PV: ${effectivePv.toFixed(3)} kW`)}
                     >
-                      <span class="text-[9px] text-[#888] block uppercase tracking-wider font-medium">Grid PLN</span>
-                      <span class="text-xs font-bold {gridMode === 'export' ? 'text-[#10b981]' : 'text-[#38bdf8]'}">{gridPower.toFixed(2)} kW</span>
-                      <span class="text-[9px] text-[#737373] block">{gridMode === 'export' ? 'Ekspor' : 'Impor'}</span>
+                      <svg class="w-5 h-5 {effectivePv > 0 ? 'text-emerald-600' : 'text-slate-400'} mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
+                      </svg>
+                      <span class="text-[10px] text-slate-500 font-medium">PV Output</span>
+                      <span class="text-base font-bold text-slate-900">{effectivePv.toFixed(3)} <span class="text-[10px] text-slate-500 font-normal">kW</span></span>
                     </div>
 
-                    <!-- Badge 3: Beban Gedung (Lower Left) -->
+                    <!-- Node 2: Grid PLN (Left) -->
                     <div 
-                      class="absolute top-[78%] left-[25%] bg-[#141618]/75 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-[#2e3438]/80 text-center shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
-                      on:click={() => showToast(`Konsumsi Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                      class="absolute top-1/2 left-[10%] -translate-y-1/2 flex flex-col items-center justify-center w-[94px] h-[94px] rounded-full border-2 border-slate-200 bg-white z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
+                      on:click={() => showToast(`Grid: ${gridMode === 'export' ? 'Ekspor' : 'Impor'} ${gridPower.toFixed(2)} kW`)}
                       role="button"
                       tabindex="0"
-                      on:keydown={(e) => e.key === 'Enter' && showToast(`Konsumsi Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`Grid: ${gridPower.toFixed(2)} kW`)}
                     >
-                      <span class="text-[9px] text-[#888] block uppercase tracking-wider font-medium">Beban Gedung</span>
-                      <span class="text-xs font-bold text-white">{totalLoadPower.toFixed(2)} kW</span>
-                      <span class="text-[9px] text-[#737373] block">Gedung 3 FT</span>
+                      <svg class="w-4 h-4 text-sky-600 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                      </svg>
+                      <span class="text-[10px] text-slate-500 font-medium">Grid PLN</span>
+                      <span class="text-xs font-bold text-slate-900">{gridPower.toFixed(2)} kW</span>
+                      <span class="text-[9px] font-semibold {gridMode === 'export' ? 'text-emerald-600' : 'text-sky-600'}">{gridMode === 'export' ? 'Ekspor' : 'Impor'}</span>
                     </div>
 
-                    <!-- Badge 4: Baterai ESS (Lower Right) -->
+                    <!-- Center: Inverter Hybrid Hub -->
                     <div 
-                      class="absolute top-[78%] left-[73%] bg-[#141618]/75 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-[#2e3438]/80 text-center shadow-md pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+                      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[78px] h-[78px] rounded-full border-2 transition-all cursor-pointer hover:scale-105 z-10 shadow-md {pvInverterEnabled ? 'border-emerald-500 bg-emerald-50' : 'border-rose-400 bg-rose-50'}"
+                      on:click={togglePvInverter}
+                      role="button"
+                      tabindex="0"
+                      on:keydown={(e) => e.key === 'Enter' && togglePvInverter()}
+                      title="Klik untuk {pvInverterEnabled ? 'mematikan' : 'menyalakan'} Inverter"
+                    >
+                      <span class="text-[9px] font-bold uppercase tracking-tight {pvInverterEnabled ? 'text-emerald-700' : 'text-rose-700'}">
+                        {pvInverterEnabled ? 'INV · ON' : 'INV · OFF'}
+                      </span>
+                      <span class="text-[11px] font-bold text-slate-900">
+                        {pvInverterEnabled ? ((effectivePv) + (batteryStatus === 'discharging' ? batteryPower : 0)).toFixed(2) + ' kW' : '0 kW'}
+                      </span>
+                      <span class="text-[8px] text-slate-500">{pvInverterEnabled ? 'Aktif' : 'Mati'}</span>
+                    </div>
+
+                    <!-- Node 3: Load (Right) -->
+                    <div 
+                      class="absolute top-1/2 right-[10%] -translate-y-1/2 flex flex-col items-center justify-center w-[94px] h-[94px] rounded-full border-2 border-slate-200 bg-white z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
+                      on:click={() => showToast(`Total Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                      role="button"
+                      tabindex="0"
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`Beban: ${totalLoadPower.toFixed(2)} kW`)}
+                    >
+                      <svg class="w-4 h-4 text-slate-600 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"></path>
+                      </svg>
+                      <span class="text-[10px] text-slate-500 font-medium">Beban</span>
+                      <span class="text-xs font-bold text-slate-900">{totalLoadPower.toFixed(2)} kW</span>
+                      <span class="text-[9px] text-slate-500">{plantName.replace('PLTS ', '')}</span>
+                    </div>
+
+                    <!-- Node 4: Battery ESS (Bottom) -->
+                    <div 
+                      class="absolute bottom-[6%] left-1/2 -translate-x-1/2 flex flex-col items-center justify-center w-[116px] h-[116px] rounded-full border-2 border-emerald-500 bg-emerald-50/70 z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
                       on:click={() => showToast(`Baterai ESS: ${batterySoc}% (${batteryStatus})`)}
                       role="button"
                       tabindex="0"
-                      on:keydown={(e) => e.key === 'Enter' && showToast(`Baterai ESS: ${batterySoc}%`)}
+                      on:keydown={(e) => e.key === 'Enter' && showToast(`Baterai: ${batterySoc}%`)}
                     >
-                      <span class="text-[9px] text-[#888] block uppercase tracking-wider font-medium">Baterai ESS</span>
-                      <span class="text-xs font-bold text-[#10b981]">{batterySoc}% ({batteryPower.toFixed(2)} kW)</span>
-                      <span class="text-[9px] text-[#737373] block capitalize">{batteryStatus}</span>
+                      <svg class="w-4 h-4 text-emerald-600 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="16" height="10" rx="2" ry="2"></rect>
+                        <line x1="22" y1="11" x2="22" y2="13"></line>
+                      </svg>
+                      <span class="text-[10px] text-slate-600 font-medium">Baterai ESS</span>
+                      <span class="text-base font-bold text-slate-900">{batterySoc}% <span class="text-[10px] text-slate-500 font-normal">SOC</span></span>
+                      <span class="text-[9px] font-semibold text-emerald-600">
+                        {batteryStatus === 'charging' ? `+${batteryPower.toFixed(2)} kW` : batteryStatus === 'discharging' ? `-${batteryPower.toFixed(2)} kW` : 'Siaga'}
+                      </span>
                     </div>
 
                   </div>
+                {/if}
 
-                </div>
-              
-              {:else}
-                <!-- 2D Minimalist Circular Node Topology -->
-                <div class="w-full h-full flex flex-col items-center justify-center relative fade-in select-none">
-                  
-                  <!-- Clean Connecting SVG Lines -->
-                  <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 520 320" preserveAspectRatio="xMidYMid meet">
-                    <defs>
-                      <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
-                      </marker>
-                      <marker id="arrow-cyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8" />
-                      </marker>
-                      <marker id="arrow-muted" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#555555" />
-                      </marker>
-                    </defs>
-
-                    <!-- PV to Inverter -->
-                    {#if pvInverterEnabled && effectivePv > 0}
-                      <line x1="260" y1="88" x2="260" y2="132" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
-                        <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" />
-                      </line>
-                    {:else}
-                      <line x1="260" y1="88" x2="260" y2="132" stroke="#333333" stroke-width="1.5" stroke-dasharray="3,3" />
-                    {/if}
-
-                    <!-- Inverter to Grid / Grid to Inverter -->
-                    {#if pvInverterEnabled && gridPower > 0}
-                      {#if gridMode === 'export'}
-                        <line x1="228" y1="160" x2="148" y2="160" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
-                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
-                        </line>
-                      {:else}
-                        <line x1="148" y1="160" x2="228" y2="160" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-cyan)" filter="url(#glow-grid)">
-                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
-                        </line>
-                      {/if}
-                    {:else}
-                      <line x1="148" y1="160" x2="228" y2="160" stroke="#333333" stroke-width="1.5" stroke-dasharray="3,3" />
-                    {/if}
-
-                    <!-- Inverter to Load -->
-                    {#if pvInverterEnabled && totalLoadPower > 0}
-                      <line x1="292" y1="160" x2="372" y2="160" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
-                        <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" />
-                      </line>
-                    {:else}
-                      <line x1="292" y1="160" x2="372" y2="160" stroke="#333333" stroke-width="1.5" stroke-dasharray="3,3" />
-                    {/if}
-
-                    <!-- Inverter to Battery / Battery to Inverter -->
-                    {#if pvInverterEnabled && batteryPower > 0 && batteryStatus !== 'standby'}
-                      {#if batteryStatus === 'charging'}
-                        <line x1="260" y1="188" x2="260" y2="232" stroke="#10b981" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
-                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
-                        </line>
-                      {:else}
-                        <line x1="260" y1="232" x2="260" y2="188" stroke="#34d399" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" filter="url(#glow-energy)">
-                          <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.2s" repeatCount="indefinite" />
-                        </line>
-                      {/if}
-                    {:else}
-                      <line x1="260" y1="188" x2="260" y2="232" stroke="#333333" stroke-width="1" stroke-dasharray="2,2" />
-                    {/if}
-                  </svg>
-
-
-                  <!-- Node 1: PV Solar (Top) -->
-                  <div 
-                    class="absolute top-[6%] left-1/2 -translate-x-1/2 flex flex-col items-center justify-center w-[116px] h-[116px] rounded-full border {pvInverterEnabled && effectivePv > 0 ? 'border-[#22c55e]/70 bg-[#16231a]' : 'border-[#383838] bg-[#1a1a1a]'} z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
-                    on:click={() => showToast(`PV: ${effectivePv.toFixed(3)} kW`)}
-                    role="button"
-                    tabindex="0"
-                    on:keydown={(e) => e.key === 'Enter' && showToast(`PV: ${effectivePv.toFixed(3)} kW`)}
-                  >
-                    <svg class="w-5 h-5 {effectivePv > 0 ? 'text-[#22c55e]' : 'text-[#737373]'} mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="5"></circle>
-                      <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                      <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
-                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <span class="text-[10px] text-[#a3a3a3]">PV Output</span>
-                    <span class="text-base font-light text-white">{effectivePv.toFixed(3)} <span class="text-[10px] text-[#737373]">kW</span></span>
-                  </div>
-
-                  <!-- Node 2: Grid PLN (Left) -->
-                  <div 
-                    class="absolute top-1/2 left-[10%] -translate-y-1/2 flex flex-col items-center justify-center w-[92px] h-[92px] rounded-full border border-[#383838] bg-[#1a1a1a] z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
-                    on:click={() => showToast(`Grid: ${gridMode === 'export' ? 'Ekspor' : 'Impor'} ${gridPower.toFixed(2)} kW`)}
-                    role="button"
-                    tabindex="0"
-                    on:keydown={(e) => e.key === 'Enter' && showToast(`Grid: ${gridPower.toFixed(2)} kW`)}
-                  >
-                    <svg class="w-4 h-4 text-[#a3a3a3] mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                    </svg>
-                    <span class="text-[10px] text-[#888]">Grid PLN</span>
-                    <span class="text-xs font-medium text-white">{gridPower.toFixed(2)} kW</span>
-                    <span class="text-[9px] text-[#737373]">{gridMode === 'export' ? 'Ekspor' : 'Impor'}</span>
-                  </div>
-
-                  <!-- Center: Inverter Hybrid Hub (Clickable Toggle) -->
-                  <div 
-                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[74px] h-[74px] rounded-full border transition-all cursor-pointer hover:scale-105 z-10 shadow-lg {pvInverterEnabled ? 'border-[#22c55e] bg-[#16291d] shadow-[0_0_15px_rgba(34,197,94,0.25)]' : 'border-[#ef4444]/60 bg-[#291717] opacity-80'}"
-                    on:click={togglePvInverter}
-                    role="button"
-                    tabindex="0"
-                    on:keydown={(e) => e.key === 'Enter' && togglePvInverter()}
-                    title="Klik untuk {pvInverterEnabled ? 'mematikan' : 'menyalakan'} Inverter"
-                  >
-                    <span class="text-[9px] font-bold uppercase tracking-tight {pvInverterEnabled ? 'text-[#22c55e]' : 'text-[#ef4444]'}">
-                      {pvInverterEnabled ? 'INV · ON' : 'INV · OFF'}
-                    </span>
-                    <span class="text-[10px] font-semibold text-white">
-                      {pvInverterEnabled ? ((effectivePv) + (batteryStatus === 'discharging' ? batteryPower : 0)).toFixed(2) + ' kW' : '0 kW'}
-                    </span>
-                    <span class="text-[8px] text-[#888]">{pvInverterEnabled ? 'Aktif' : 'Mati'}</span>
-                  </div>
-
-                  <!-- Node 3: Load (Right) -->
-                  <div 
-                    class="absolute top-1/2 right-[10%] -translate-y-1/2 flex flex-col items-center justify-center w-[92px] h-[92px] rounded-full border border-[#383838] bg-[#1a1a1a] z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
-                    on:click={() => showToast(`Total Beban: ${totalLoadPower.toFixed(2)} kW`)}
-                    role="button"
-                    tabindex="0"
-                    on:keydown={(e) => e.key === 'Enter' && showToast(`Beban: ${totalLoadPower.toFixed(2)} kW`)}
-                  >
-                    <svg class="w-4 h-4 text-[#a3a3a3] mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"></path>
-                    </svg>
-                    <span class="text-[10px] text-[#888]">Beban</span>
-                    <span class="text-xs font-medium text-white">{totalLoadPower.toFixed(2)} kW</span>
-                    <span class="text-[9px] text-[#737373]">Gedung 3 FT</span>
-                  </div>
-
-                  <!-- Node 4: Battery ESS (Bottom) -->
-                  <div 
-                    class="absolute bottom-[6%] left-1/2 -translate-x-1/2 flex flex-col items-center justify-center w-[116px] h-[116px] rounded-full border border-[#22c55e]/70 bg-[#16231a] z-10 transition-transform hover:scale-105 cursor-pointer shadow-sm"
-                    on:click={() => showToast(`Baterai ESS: ${batterySoc}% (${batteryStatus})`)}
-                    role="button"
-                    tabindex="0"
-                    on:keydown={(e) => e.key === 'Enter' && showToast(`Baterai: ${batterySoc}%`)}
-                  >
-                    <svg class="w-4 h-4 text-[#22c55e] mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="2" y="7" width="16" height="10" rx="2" ry="2"></rect>
-                      <line x1="22" y1="11" x2="22" y2="13"></line>
-                    </svg>
-                    <span class="text-[10px] text-[#a3a3a3]">Baterai ESS</span>
-                    <span class="text-base font-light text-white">{batterySoc}% <span class="text-[10px] text-[#737373]">SOC</span></span>
-                    <span class="text-[9px] text-[#22c55e]">
-                      {batteryStatus === 'charging' ? `+${batteryPower.toFixed(2)} kW` : batteryStatus === 'discharging' ? `-${batteryPower.toFixed(2)} kW` : 'Siaga'}
-                    </span>
-                  </div>
-
-                </div>
-              {/if}
-
-            </div>
-          </section>
-          
-          <!-- Right Section: Overview & Environmental Cards -->
-          <section class="w-full lg:w-[420px] flex flex-col gap-6">
-            
-            <!-- Overview Card -->
-            <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl flex flex-col p-5 h-[280px]">
-              <div class="flex justify-between items-center mb-8">
-                <h2 class="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-[#ff4f00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Overview
-                </h2>
-                <div class="flex gap-2">
-                  <div class="bg-[#1a1a1a] border border-[#333] text-xs px-2 py-1 rounded flex items-center justify-between w-[115px]">
-                    <span class="text-[#666] cursor-pointer hover:text-white">‹</span>
-                    <span class="text-xs">09/10/2026</span>
-                    <span class="text-[#666] cursor-pointer hover:text-white">›</span>
-                  </div>
-                  <select 
-                    class="bg-[#1a1a1a] border border-[#333] text-xs px-2 py-1 rounded outline-none w-[70px] text-[#a3a3a3]"
-                    bind:value={overviewPeriod}
-                  >
-                    <option value="Day">Day</option>
-                    <option value="Month">Month</option>
-                    <option value="Year">Year</option>
-                  </select>
-                </div>
               </div>
+            </section>
+            
+            <!-- Right Section: Overview & Environmental Cards (Clean White Theme) -->
+            <section class="w-full lg:w-[420px] flex flex-col gap-6">
               
-              <div class="flex-1 flex items-center justify-center gap-8">
-                <!-- Energy Generation -->
-                <div class="flex flex-col items-center">
-                  <div class="w-9 h-9 rounded-full bg-[#1b3323] text-[#22c55e] flex items-center justify-center mb-3">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              <!-- Overview Card -->
+              <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl flex flex-col p-5 h-[280px]">
+                <div class="flex justify-between items-center mb-6">
+                  <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#ff4f00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
+                    Ringkasan Pembangkitan
+                  </h2>
+                  <div class="flex gap-2">
+                    <div class="bg-slate-50 border border-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center justify-between w-[120px] text-slate-700">
+                      <span class="text-slate-400 cursor-pointer hover:text-slate-700">‹</span>
+                      <span class="text-xs font-medium">09/10/2026</span>
+                      <span class="text-slate-400 cursor-pointer hover:text-slate-700">›</span>
+                    </div>
+                    <select 
+                      class="bg-slate-50 border border-slate-200 text-xs px-2 py-1 rounded-lg outline-none w-[70px] text-slate-700 font-medium"
+                      bind:value={overviewPeriod}
+                    >
+                      <option value="Day">Day</option>
+                      <option value="Month">Month</option>
+                      <option value="Year">Year</option>
+                    </select>
                   </div>
-                  <div class="text-3xl font-light text-white">{overview.energy} <span class="text-xs text-[#737373]">kWh</span></div>
-                  <div class="text-[11px] text-[#737373] mt-1">Energy Generation</div>
                 </div>
                 
-                <!-- Generation Revenue -->
-                <div class="flex flex-col items-center">
-                  <div class="w-9 h-9 rounded-full bg-[#352516] text-[#ff4f00] flex items-center justify-center mb-3">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <path d="M12 6v12M15 9.5a3.5 3.5 0 0 0-7 0c0 4 7 2 7 6a3.5 3.5 0 0 1-7 0"></path>
-                    </svg>
+                <div class="flex-1 flex items-center justify-center gap-8">
+                  <!-- Energy Generation -->
+                  <div class="flex flex-col items-center">
+                    <div class="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center mb-2 shadow-sm">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                      </svg>
+                    </div>
+                    <div class="text-3xl font-light text-slate-900 tracking-tight">{overview.energy} <span class="text-xs text-slate-500 font-normal">kWh</span></div>
+                    <div class="text-[11px] text-slate-500 mt-1 font-medium">Energy Generation</div>
                   </div>
-                  <div class="text-3xl font-light text-white">{overview.revenue} <span class="text-xs text-[#737373]">k IDR</span></div>
-                  <div class="text-[11px] text-[#737373] mt-1">Generation Revenue</div>
+                  
+                  <!-- Generation Revenue -->
+                  <div class="flex flex-col items-center">
+                    <div class="w-11 h-11 rounded-full bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center mb-2 shadow-sm">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v12M15 9.5a3.5 3.5 0 0 0-7 0c0 4 7 2 7 6a3.5 3.5 0 0 1-7 0"></path>
+                      </svg>
+                    </div>
+                    <div class="text-3xl font-light text-slate-900 tracking-tight">{overview.revenue} <span class="text-xs text-slate-500 font-normal">k IDR</span></div>
+                    <div class="text-[11px] text-slate-500 mt-1 font-medium">Generation Revenue</div>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <!-- Environmental Contributions Card -->
-            <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl flex flex-col p-5 flex-1">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] mb-4">
-                Environmental Contributions
-              </h2>
               
-              <div class="flex justify-between gap-3 h-full">
-                <div class="flex-1 bg-[#1a1a1a] rounded-lg border border-[#2d2d2d] flex flex-col items-center justify-center p-3">
-                  <div class="text-xs font-medium text-white">{environmental.coal}</div>
-                  <div class="text-[10px] text-[#737373] text-center mt-1 uppercase tracking-tight">Coal Saved</div>
+              <!-- Environmental Contributions Card -->
+              <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl flex flex-col p-5 flex-1">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-4 flex items-center gap-2">
+                  <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                  Kontribusi Lingkungan
+                </h2>
+                
+                <div class="flex justify-between gap-3 h-full">
+                  <div class="flex-1 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col items-center justify-center p-3">
+                    <div class="text-sm font-bold text-slate-800">{environmental.coal}</div>
+                    <div class="text-[10px] text-slate-500 text-center mt-1 uppercase tracking-tight font-medium">Coal Saved</div>
+                  </div>
+                  <div class="flex-1 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col items-center justify-center p-3">
+                    <div class="text-sm font-bold text-emerald-700">{environmental.trees}</div>
+                    <div class="text-[10px] text-slate-500 text-center mt-1 uppercase tracking-tight font-medium">Trees Planted</div>
+                  </div>
+                  <div class="flex-1 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col items-center justify-center p-3">
+                    <div class="text-sm font-bold text-sky-700">{environmental.co2}</div>
+                    <div class="text-[10px] text-slate-500 text-center mt-1 uppercase tracking-tight font-medium">CO₂ Reduct.</div>
+                  </div>
                 </div>
-                <div class="flex-1 bg-[#1a1a1a] rounded-lg border border-[#2d2d2d] flex flex-col items-center justify-center p-3">
-                  <div class="text-xs font-medium text-white">{environmental.trees}</div>
-                  <div class="text-[10px] text-[#737373] text-center mt-1 uppercase tracking-tight">Trees Planted</div>
+              </div>
+              
+            </section>
+          </div>
+
+          <!-- Quick Summary Widget: Prediksi & Cuaca (Clean White Theme) -->
+          <section class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 sm:p-6 flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center text-[#ff4f00]">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                  </svg>
                 </div>
-                <div class="flex-1 bg-[#1a1a1a] rounded-lg border border-[#2d2d2d] flex flex-col items-center justify-center p-3">
-                  <div class="text-xs font-medium text-white">{environmental.co2}</div>
-                  <div class="text-[10px] text-[#737373] text-center mt-1 uppercase tracking-tight">CO₂ Reduct.</div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h2 class="text-sm font-bold text-slate-900 tracking-tight">Prakiraan Cuaca & Prediksi Produksi PV</h2>
+                    <span class="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {weatherModelSource} Model
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    Estimasi hasil pembangkitan harian/mingguan dan kalkulasi potensi teknis PV
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                class="text-xs text-[#ff4f00] hover:text-[#ea580c] flex items-center gap-1 font-semibold transition-colors group self-start sm:self-auto"
+                on:click={() => activeTab = 'Prediksi & Analitik'}
+              >
+                <span>Buka Prediksi & Analitik Lengkap</span>
+                <span class="transition-transform group-hover:translate-x-0.5">→</span>
+              </button>
+            </div>
+
+            <!-- Quick Metrics Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between">
+                <span class="text-[11px] text-slate-500 font-medium">Estimasi Hari Ini</span>
+                <div class="my-1">
+                  <span class="text-lg font-bold text-slate-900">31.40 <span class="text-xs text-slate-500 font-normal">kWh</span></span>
+                  <span class="text-[10px] text-emerald-600 block font-semibold">Tercapai 27.80 kWh (88.5%)</span>
+                </div>
+                <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: 88.5%;"></div>
+                </div>
+              </div>
+
+              <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between">
+                <span class="text-[11px] text-slate-500 font-medium">Estimasi Besok</span>
+                <div class="my-1">
+                  <span class="text-lg font-bold text-slate-900">34.20 <span class="text-xs text-slate-500 font-normal">kWh</span></span>
+                  <span class="text-[10px] text-sky-600 block font-semibold">Cerah Dominan · PSH 4.85j</span>
+                </div>
+                <span class="text-[10px] text-slate-500">+8.9% vs rata-rata harian</span>
+              </div>
+
+              <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between">
+                <span class="text-[11px] text-slate-500 font-medium">Potensi Teknis PV (Live)</span>
+                <div class="my-1">
+                  <span class="text-lg font-bold text-slate-900">{technicalPvPotentialKw.toFixed(2)} <span class="text-xs text-slate-500 font-normal">kW</span></span>
+                  <span class="text-[10px] text-emerald-600 block font-semibold">Pencapaian: {potentialRealizationRatio.toFixed(1)}%</span>
+                </div>
+                <span class="text-[10px] text-slate-500">G_poa: {weatherCurrent.irradiancePoa} W/m²</span>
+              </div>
+
+              <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between">
+                <span class="text-[11px] text-slate-500 font-medium">Kondisi Cuaca & Awan</span>
+                <div class="my-1">
+                  <span class="text-lg font-bold text-slate-900">{weatherCurrent.tempAmbient}°C</span>
+                  <span class="text-[10px] text-slate-600 block font-medium">Awan {weatherCurrent.cloudCoverTotal}% · Angin {weatherCurrent.windSpeed} km/h</span>
+                </div>
+                <span class="text-[10px] text-slate-500">{weatherCurrent.source.split(' ')[0]} {weatherCurrent.stationId}</span>
+              </div>
+            </div>
+
+            <!-- 3-Day Mini Preview Strip -->
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-2 text-slate-600">
+                <span class="text-slate-900 font-semibold">Prakiraan 3 Hari:</span>
+                <span>Ringkasan prospek cuaca & energi</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 w-full sm:w-auto">
+                {#each weeklyForecastData.slice(1, 4) as dayForecast}
+                  <div class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-2 shadow-xs">
+                    <div class="w-2 h-2 rounded-full {dayForecast.predictedKwh > 30 ? 'bg-emerald-500' : dayForecast.predictedKwh > 24 ? 'bg-orange-500' : 'bg-sky-500'}"></div>
+                    <div>
+                      <span class="text-slate-900 font-bold block text-[11px]">{dayForecast.day}</span>
+                      <span class="text-slate-500 text-[10px]">{dayForecast.predictedKwh} kWh</span>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          </section>
+
+          <!-- Interactive Bottom Analytics Charts -->
+          <section class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl overflow-hidden flex flex-col">
+            
+            <!-- Chart Filter Toolbar -->
+            <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start">
+                {#each ['Power Curve', 'Energy Monitoring', 'Generation Comparison', 'Heatmap'] as tab}
+                  <button 
+                    class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all {chartTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}"
+                    on:click={() => chartTab = tab}
+                  >
+                    {tab}
+                  </button>
+                {/each}
+              </div>
+
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span>Interval: Realtime Telemetry</span>
+                <span class="text-slate-300">|</span>
+                <span class="text-emerald-600 font-medium">Online RTU-01</span>
+              </div>
+            </div>
+
+            <!-- Chart Canvas Container -->
+            <div class="p-5">
+              <div class="w-full h-[340px] bg-white rounded-lg p-2">
+                <Chart option={activeDashboardChartOption} />
+              </div>
+
+              <!-- Tab Engineering Insight Footer -->
+              <div class="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                <div class="flex items-start md:items-center gap-2.5">
+                  <svg class="w-4 h-4 text-[#ff4f00] shrink-0 mt-0.5 md:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>
+                    {#if chartTab === 'Power Curve'}
+                      <strong class="text-slate-900">Keseimbangan Daya:</strong> P_pv (5.82 kW) menyuplai Beban (1.36 kW), Pengisian Baterai (+0.76 kW), dan Ekspor Grid (1.90 kW). Sistem beroperasi optimal tanpa pemotongan daya.
+                    {:else if chartTab === 'Energy Monitoring'}
+                      <strong class="text-slate-900">Audit Neraca Energi:</strong> Total produksi 206.2 kWh mampu memenuhi kebutuhan siang hari, dan surplus 97.4 kWh diekspor ke PLN untuk menekan tagihan bulanan.
+                    {:else if chartTab === 'Generation Comparison'}
+                      <strong class="text-slate-900">Analisis Komparatif:</strong> Kurva produksi mencapai 82.0% dari kapasitas puncak teoritis STC, membuktikan panel surya bersih dan tracking MPPT bekerja optimal.
+                    {:else if chartTab === 'Heatmap'}
+                      <strong class="text-slate-900">Pola Insolasi:</strong> Matriks visual menunjukkan distribusi intensitas radiasi matahari 06:00 - 18:00 WIB. Warna oranye menandakan jam produksi puncak (Peak Sun Hours).
+                    {/if}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 text-[11px] text-slate-400">
+                  <span>Resolusi: 60 Menit</span>
                 </div>
               </div>
             </div>
-            
           </section>
         </div>
 
-        <!-- ============================================================== -->
-        <!-- QUICK SUMMARY WIDGET: PREDIKSI & CUACA                         -->
-        <!-- ============================================================== -->
-        <section class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5 sm:p-6 flex flex-col gap-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#2d2d2d]">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-[#2a201a] border border-[#402a1e] flex items-center justify-center text-[#ff4f00]">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-                </svg>
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h2 class="text-sm font-semibold text-white tracking-tight">Prakiraan Cuaca & Prediksi Produksi PV</h2>
-                  <span class="text-[10px] px-2 py-0.5 rounded font-medium bg-[#16231a] text-[#22c55e] border border-[#1b4332]">
-                    {weatherModelSource} Model
-                  </span>
-                </div>
-                <p class="text-xs text-[#737373] mt-0.5">
-                  Estimasi hasil pembangkitan harian/mingguan dan kalkulasi potensi teknis PV 7.10 kWp
-                </p>
-              </div>
-            </div>
-
-            <button 
-              class="text-xs text-[#ff4f00] hover:text-[#ff6a26] flex items-center gap-1 font-medium transition-colors group self-start sm:self-auto"
-              on:click={() => activeTab = 'Prediksi & Analitik'}
-            >
-              <span>Buka Prediksi & Analitik Lengkap</span>
-              <span class="transition-transform group-hover:translate-x-0.5">→</span>
-            </button>
-          </div>
-
-          <!-- Quick Metrics Grid -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div class="bg-[#1a1a1a] p-3.5 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
-              <span class="text-[11px] text-[#737373]">Estimasi Hari Ini</span>
-              <div class="my-1">
-                <span class="text-lg font-light text-white">31.40 <span class="text-xs text-[#737373]">kWh</span></span>
-                <span class="text-[10px] text-[#22c55e] block font-medium">Tercapai 27.80 kWh (88.5%)</span>
-              </div>
-              <div class="w-full bg-[#262626] h-1.5 rounded-full overflow-hidden">
-                <div class="bg-[#22c55e] h-full rounded-full" style="width: 88.5%;"></div>
-              </div>
-            </div>
-
-            <div class="bg-[#1a1a1a] p-3.5 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
-              <span class="text-[11px] text-[#737373]">Estimasi Besok</span>
-              <div class="my-1">
-                <span class="text-lg font-light text-white">34.20 <span class="text-xs text-[#737373]">kWh</span></span>
-                <span class="text-[10px] text-[#38bdf8] block font-medium">Cerah Dominan · PSH 4.85j</span>
-              </div>
-              <span class="text-[10px] text-[#737373]">+8.9% vs rata-rata harian</span>
-            </div>
-
-            <div class="bg-[#1a1a1a] p-3.5 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
-              <span class="text-[11px] text-[#737373]">Potensi Teknis PV (Live)</span>
-              <div class="my-1">
-                <span class="text-lg font-light text-white">{technicalPvPotentialKw.toFixed(2)} <span class="text-xs text-[#737373]">kW</span></span>
-                <span class="text-[10px] text-[#22c55e] block font-medium">Pencapaian: {potentialRealizationRatio.toFixed(1)}%</span>
-              </div>
-              <span class="text-[10px] text-[#737373]">G_poa: {weatherCurrent.irradiancePoa} W/m²</span>
-            </div>
-
-            <div class="bg-[#1a1a1a] p-3.5 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
-              <span class="text-[11px] text-[#737373]">Kondisi Cuaca & Awan</span>
-              <div class="my-1">
-                <span class="text-lg font-light text-white">{weatherCurrent.tempAmbient}°C</span>
-                <span class="text-[10px] text-[#a3a3a3] block">Awan {weatherCurrent.cloudCoverTotal}% · Angin {weatherCurrent.windSpeed} km/h</span>
-              </div>
-              <span class="text-[10px] text-[#737373]">{weatherCurrent.source.split(' ')[0]} {weatherCurrent.stationId}</span>
-            </div>
-          </div>
-
-          <!-- 3-Day Mini Preview Strip -->
-          <div class="bg-[#181818] rounded-lg p-3 border border-[#282828] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <div class="flex items-center gap-2 text-[#737373]">
-              <span class="text-white font-medium">Prakiraan 3 Hari:</span>
-              <span>Ringkasan prospek cuaca & energi</span>
-            </div>
-            <div class="grid grid-cols-3 gap-2 w-full sm:w-auto">
-              {#each weeklyForecastData.slice(1, 4) as dayForecast}
-                <div class="bg-[#202020] px-3 py-1.5 rounded border border-[#2c2c2c] flex items-center gap-2">
-                  <div class="w-2 h-2 rounded-full {dayForecast.predictedKwh > 30 ? 'bg-[#22c55e]' : dayForecast.predictedKwh > 24 ? 'bg-[#ff4f00]' : 'bg-[#38bdf8]'}"></div>
-                  <div>
-                    <span class="text-white font-medium block text-[11px]">{dayForecast.day}</span>
-                    <span class="text-[#737373] text-[10px]">{dayForecast.predictedKwh} kWh</span>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          </div>
-        </section>
-
-        <!-- ============================================================== -->
-        <!-- ELEGANT & PROFESSIONAL: KONTROL ENERGI SECTION                 -->
-        <!-- ============================================================== -->
-        <section class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5 sm:p-6 flex flex-col gap-5">
+      <!-- ============================================================== -->
+      <!-- TAB: KONTROL ENERGI (EMS MANAGEMENT SUITE)                     -->
+      <!-- ============================================================== -->
+      {:else if activeTab === 'Kontrol Energi'}
+        <div class="flex flex-col gap-6 fade-in">
           
-          <!-- Section Header: Title & Segmented Control -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#2d2d2d]">
+          <!-- Top Banner & Global Switch -->
+          <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <div class="flex items-center gap-2.5">
-                <h2 class="text-base font-semibold text-white tracking-tight">Kontrol Energi</h2>
-                <span class="text-[10px] px-2 py-0.5 rounded font-medium border {controlMode === 'auto' ? 'bg-[#12281e] text-[#22c55e] border-[#1b4332]' : 'bg-[#2b1f15] text-[#ff4f00] border-[#4a2e16]'}">
-                  {controlMode === 'auto' ? 'Otomatis' : 'Manual'}
-                </span>
-              </div>
-              <p class="text-xs text-[#737373] mt-0.5">
-                Manajemen alur daya Baterai ESS, Grid PLN, Panel Surya PV, dan Beban Ruangan
-              </p>
+              <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Sistem Manajemen & Kontrol Energi (EMS)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">Konfigurasi operasional pembangkitan {plantName} dan proteksi aliran daya</p>
             </div>
 
-            <!-- Minimalist Capsule Segmented Switch -->
-            <div class="flex items-center bg-[#181818] p-1 rounded-lg border border-[#2c2c2c] self-start sm:self-auto">
+            <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
               <button 
-                class="px-3.5 py-1.5 rounded-md text-xs font-medium transition-all {controlMode === 'auto' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-[#888] hover:text-[#d4d4d4]'}"
+                class="px-4 py-2 rounded-md text-xs font-semibold transition-all {controlMode === 'auto' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
                 on:click={() => toggleControlMode('auto')}
               >
-                Otomatis
+                Mode Otomatis (AI-EMS)
               </button>
               <button 
-                class="px-3.5 py-1.5 rounded-md text-xs font-medium transition-all {controlMode === 'manual' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-[#888] hover:text-[#d4d4d4]'}"
+                class="px-4 py-2 rounded-md text-xs font-semibold transition-all {controlMode === 'manual' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
                 on:click={() => toggleControlMode('manual')}
               >
-                Manual
+                Mode Manual
               </button>
             </div>
           </div>
 
-          <!-- Clean Mode Status Bar -->
+          <!-- Strategy Status Bar -->
           {#if controlMode === 'auto'}
-            <div class="bg-[#181818] border border-[#2c2c2c] rounded-lg px-4 py-2.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
-              <div class="flex items-center gap-2 text-[#a3a3a3]">
-                <span class="text-[#737373]">Strategi Operasi:</span>
-                <span class="text-white font-medium">
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl px-5 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-2 text-slate-600">
+                <span class="font-medium text-slate-500">Strategi Operasi:</span>
+                <span class="text-slate-900 font-bold">
                   {autoStrategy === 'self_consumption' ? 'Konsumsi Mandiri (Prioritas beban lokal & pengisian baterai)' :
                    autoStrategy === 'peak_shaving' ? 'Cukur Beban Puncak (Menekan konsumsi puncak PLN)' :
                    autoStrategy === 'tou' ? 'Tarif Waktu (Optimasi jam puncak WBP/LWBP)' :
@@ -1737,7 +1743,7 @@
               </div>
 
               <!-- Segmented Strategy Selector -->
-              <div class="flex flex-wrap items-center gap-1">
+              <div class="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
                 {#each [
                   { id: 'self_consumption', label: 'Konsumsi Mandiri' },
                   { id: 'peak_shaving', label: 'Beban Puncak' },
@@ -1745,7 +1751,7 @@
                   { id: 'backup', label: 'Cadangan' }
                 ] as strat}
                   <button 
-                    class="px-2.5 py-1 rounded text-[11px] transition-colors {autoStrategy === strat.id ? 'bg-[#2a2a2a] text-white font-medium border border-[#3d3d3d]' : 'text-[#737373] hover:text-white'}"
+                    class="px-2.5 py-1 rounded text-[11px] font-semibold transition-colors {autoStrategy === strat.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
                     on:click={() => setAutoStrategy(strat.id as any)}
                   >
                     {strat.label}
@@ -1754,10 +1760,10 @@
               </div>
             </div>
           {:else}
-            <div class="bg-[#211a14] border border-[#3b2c1c] rounded-lg px-4 py-2.5 flex items-center justify-between text-xs text-[#d97706]">
-              <span>Kontrol Manual Aktif: Nilai daya dan saklar perangkat dikendalikan langsung oleh operator.</span>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 flex items-center justify-between text-xs text-amber-800">
+              <span class="font-medium">Kontrol Manual Aktif: Nilai daya dan saklar perangkat dikendalikan langsung oleh operator.</span>
               <button 
-                class="text-xs text-[#ff4f00] hover:underline font-medium"
+                class="text-xs text-[#ff4f00] hover:underline font-bold"
                 on:click={() => toggleControlMode('auto')}
               >
                 Kembalikan ke Otomatis
@@ -1765,56 +1771,53 @@
             </div>
           {/if}
 
-          <!-- Grid of 4 Core Control Cards (Clean, Symmetrical, Professional) -->
+          <!-- 4 Core Control Cards (Clean Light Theme) -->
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             
             <!-- CARD 1: BATERAI ESS -->
-            <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex flex-col justify-between hover:border-[#383838] transition-colors">
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2 text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
-                    <svg class="w-3.5 h-3.5 text-[#22c55e]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="2" y="7" width="16" height="10" rx="2" ry="2"></rect>
                       <line x1="22" y1="11" x2="22" y2="13"></line>
                     </svg>
                     Baterai ESS
                   </div>
-                  <span class="text-xs font-medium px-2 py-0.5 rounded {batterySoc >= 50 ? 'bg-[#12281e] text-[#22c55e] border border-[#1b4332]' : 'bg-[#2b1f15] text-[#ff4f00] border-[#4a2e16]'}">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full {batterySoc >= 50 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}">
                     {batterySoc}% SOC
                   </span>
                 </div>
 
-                <!-- Primary Value -->
-                <div class="text-2xl font-light text-white tracking-tight mt-1">
-                  {batteryStatus === 'charging' ? '+' : batteryStatus === 'discharging' ? '-' : ''}{batteryPower.toFixed(2)} <span class="text-xs text-[#737373] font-normal">kW</span>
+                <div class="text-2xl font-bold text-slate-900 tracking-tight mt-1">
+                  {batteryStatus === 'charging' ? '+' : batteryStatus === 'discharging' ? '-' : ''}{batteryPower.toFixed(2)} <span class="text-xs text-slate-500 font-normal">kW</span>
                 </div>
-                <div class="text-xs text-[#737373] mt-0.5 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full {batteryStatus === 'charging' ? 'bg-[#22c55e]' : batteryStatus === 'discharging' ? 'bg-[#ff4f00]' : 'bg-[#666]'}"></span>
+                <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full {batteryStatus === 'charging' ? 'bg-emerald-500' : batteryStatus === 'discharging' ? 'bg-orange-500' : 'bg-slate-400'}"></span>
                   {batteryStatus === 'charging' ? 'Pengisian Daya' : batteryStatus === 'discharging' ? 'Pengosongan Daya' : 'Siaga'}
                 </div>
 
-                <!-- Slim Progress Bar -->
-                <div class="w-full bg-[#262626] h-1.5 rounded-full overflow-hidden my-3">
-                  <div class="h-full rounded-full transition-all duration-500 bg-[#22c55e]" style="width: {batterySoc}%;"></div>
+                <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden my-3">
+                  <div class="h-full rounded-full transition-all duration-500 bg-emerald-500" style="width: {batterySoc}%;"></div>
                 </div>
 
-                <!-- Telemetry Metrics -->
-                <div class="grid grid-cols-2 gap-2 text-[11px] text-[#737373] py-2 border-t border-[#262626]">
-                  <div>Tegangan: <span class="text-white font-medium">{batteryVoltage} V</span></div>
-                  <div>Arus: <span class="text-white font-medium">{batteryCurrent} A</span></div>
-                  <div>Suhu: <span class="text-white font-medium">{batteryTemp} °C</span></div>
-                  <div>SOH: <span class="text-[#22c55e] font-medium">{batteryHealth}%</span></div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-500 py-2 border-t border-slate-100">
+                  <div>Tegangan: <span class="text-slate-800 font-semibold">{batteryVoltage} V</span></div>
+                  <div>Arus: <span class="text-slate-800 font-semibold">{batteryCurrent} A</span></div>
+                  <div>Suhu: <span class="text-slate-800 font-semibold">{batteryTemp} °C</span></div>
+                  <div>SOH: <span class="text-emerald-600 font-semibold">{batteryHealth}%</span></div>
                 </div>
               </div>
 
               <!-- Controls -->
-              <div class="pt-3 border-t border-[#262626] flex flex-col gap-2">
-                <div class="flex items-center justify-between text-[11px] text-[#737373]">
+              <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                <div class="flex items-center justify-between text-[11px] text-slate-500">
                   <span>Mode Operasi</span>
-                  <span class="text-white font-medium capitalize">{batteryManualMode}</span>
+                  <span class="text-slate-800 font-bold capitalize">{batteryManualMode}</span>
                 </div>
 
-                <div class="grid grid-cols-4 gap-1">
+                <div class="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
                   {#each [
                     { id: 'auto', label: 'Auto' },
                     { id: 'charge', label: 'Isi' },
@@ -1822,7 +1825,7 @@
                     { id: 'standby', label: 'Siaga' }
                   ] as bmode}
                     <button 
-                      class="py-1 rounded text-[11px] transition-colors {batteryManualMode === bmode.id ? 'bg-[#2a2a2a] text-white font-medium border border-[#3d3d3d]' : 'text-[#737373] hover:text-white'}"
+                      class="py-1 rounded text-[11px] font-semibold transition-colors {batteryManualMode === bmode.id ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}"
                       on:click={() => {
                         if (controlMode !== 'manual') toggleControlMode('manual');
                         setBatteryMode(bmode.id as any);
@@ -1833,7 +1836,7 @@
                   {/each}
                 </div>
 
-                <div class="flex items-center justify-between text-[10px] text-[#737373] mt-1">
+                <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
                   <span>Batas: {batteryMaxChargePower} kW</span>
                   <span>Min Reserve: {batteryMinSocCutoff}%</span>
                 </div>
@@ -1841,1223 +1844,455 @@
             </div>
 
             <!-- CARD 2: GRID PLN -->
-            <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex flex-col justify-between hover:border-[#383838] transition-colors">
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2 text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
-                    <svg class="w-3.5 h-3.5 text-[#38bdf8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <svg class="w-3.5 h-3.5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                     </svg>
                     Grid PLN
                   </div>
-                  <span class="text-xs font-medium px-2 py-0.5 rounded {gridMode === 'export' ? 'bg-[#12281e] text-[#22c55e] border border-[#1b4332]' : 'bg-[#16222f] text-[#38bdf8] border border-[#1f374e]'}">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full {gridMode === 'export' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-sky-50 text-sky-700 border border-sky-200'}">
                     {gridMode === 'export' ? 'Ekspor' : 'Impor'}
                   </span>
                 </div>
 
-                <!-- Primary Value -->
-                <div class="text-2xl font-light text-white tracking-tight mt-1">
-                  {gridPower.toFixed(2)} <span class="text-xs text-[#737373] font-normal">kW</span>
+                <div class="text-2xl font-bold {gridMode === 'export' ? 'text-emerald-600' : 'text-sky-600'} tracking-tight mt-1">
+                  {gridPower.toFixed(2)} <span class="text-xs text-slate-500 font-normal">kW</span>
                 </div>
-                <div class="text-xs text-[#737373] mt-0.5">
-                  {gridMode === 'export' ? 'Energi disalurkan ke jaringan PLN' : 'Pasokan daya dari jaringan PLN'}
+                <div class="text-xs text-slate-500 mt-0.5">
+                  Tegangan: {gridVoltage} V · Frekuensi: {gridFrequency} Hz
                 </div>
 
-                <!-- Telemetry Metrics -->
-                <div class="grid grid-cols-2 gap-2 text-[11px] text-[#737373] py-2 mt-4 border-t border-[#262626]">
-                  <div>Ekspor Hari Ini: <span class="text-white font-medium">{gridDailyExport} kWh</span></div>
-                  <div>Impor Hari Ini: <span class="text-white font-medium">{gridDailyImport} kWh</span></div>
-                  <div>Tegangan: <span class="text-white font-medium">{gridVoltage} V</span></div>
-                  <div>Frekuensi: <span class="text-white font-medium">{gridFrequency} Hz</span></div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-500 py-3 border-t border-slate-100 my-2">
+                  <div>Ekspor Hari Ini: <span class="text-slate-800 font-semibold">{gridDailyExport} kWh</span></div>
+                  <div>Impor Hari Ini: <span class="text-slate-800 font-semibold">{gridDailyImport} kWh</span></div>
                 </div>
               </div>
 
-              <!-- Controls -->
-              <div class="pt-3 border-t border-[#262626] flex flex-col gap-2.5">
-                <div class="flex items-center justify-between text-xs">
-                  <div>
-                    <span class="text-white font-medium block">Batas Zero Export</span>
-                    <span class="text-[10px] text-[#737373]">Mencegah arus balik ke PLN</span>
-                  </div>
+              <div class="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-slate-700">Mode Zero Export</span>
                   <button 
-                    class="w-8 h-4 rounded-full transition-colors p-0.5 flex items-center {zeroExportEnabled ? 'bg-[#ff4f00] justify-end' : 'bg-[#333] justify-start'}"
+                    class="w-8 h-4 rounded-full transition-colors p-0.5 flex items-center {zeroExportEnabled ? 'bg-[#ff4f00] justify-end' : 'bg-slate-300 justify-start'}"
                     on:click={toggleZeroExport}
                     aria-label="Toggle Zero Export"
                   >
-                    <div class="w-3 h-3 rounded-full bg-white shadow-sm"></div>
+                    <div class="w-3 h-3 rounded-full bg-white shadow-xs"></div>
                   </button>
                 </div>
-
-                <div>
-                  <div class="flex justify-between text-[11px] text-[#737373] mb-1">
-                    <span>Batas Ekspor Daya</span>
-                    <span class="text-white font-medium">{exportLimit.toFixed(1)} kW</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="5.0" 
-                    step="0.5"
-                    bind:value={exportLimit}
-                    class="w-full accent-[#ff4f00] h-1 bg-[#262626] rounded cursor-pointer"
-                  />
+                <div class="flex justify-between text-[10px] text-slate-500">
+                  <span>Batas Ekspor Maks: {exportLimit} kW</span>
                 </div>
               </div>
             </div>
 
-            <!-- CARD 3: PANEL SURYA (PV) -->
-            <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex flex-col justify-between hover:border-[#383838] transition-colors">
+            <!-- CARD 3: PV PANEL SURYA -->
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2 text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
-                    <svg class="w-3.5 h-3.5 text-[#22c55e]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <svg class="w-3.5 h-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="5"></circle>
                       <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
                     </svg>
-                    Panel Surya (PV)
+                    PV Panel Surya
                   </div>
-                  <span class="text-xs font-medium px-2 py-0.5 rounded {pvInverterEnabled ? 'bg-[#12281e] text-[#22c55e] border border-[#1b4332]' : 'bg-[#2b1919] text-[#ef4444] border-[#4a2424]'}">
-                    {pvInverterEnabled ? 'Aktif' : 'Nonaktif'}
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full {pvInverterEnabled ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                    {pvInverterEnabled ? 'Inverter ON' : 'Inverter OFF'}
                   </span>
                 </div>
 
-                <!-- Primary Value -->
-                <div class="text-2xl font-light text-white tracking-tight mt-1">
-                  {effectivePv.toFixed(3)} <span class="text-xs text-[#737373] font-normal">kW</span>
+                <div class="text-2xl font-bold text-slate-900 tracking-tight mt-1">
+                  {effectivePv.toFixed(3)} <span class="text-xs text-slate-500 font-normal">kW</span>
                 </div>
-                <div class="text-xs text-[#737373] mt-0.5">
-                  Radiasi {pvIrradiance} W/m² · Efisiensi {pvEfficiency}%
+                <div class="text-xs text-slate-500 mt-0.5">
+                  Radiasi: {pvIrradiance} W/m² · Efisiensi: {pvEfficiency}%
                 </div>
 
-                <!-- Telemetry Metrics -->
-                <div class="grid grid-cols-2 gap-2 text-[11px] text-[#737373] py-2 mt-4 border-t border-[#262626]">
-                  <div>String 1: <span class="text-white font-medium">{pvString1.p} kW</span></div>
-                  <div>String 2: <span class="text-white font-medium">{pvString2.p} kW</span></div>
-                  <div>Puncak Hari Ini: <span class="text-white font-medium">{pvPeakPower.toFixed(1)} kW</span></div>
-                  <div>Total Harian: <span class="text-white font-medium">{pvDailyYield} kWh</span></div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-500 py-3 border-t border-slate-100 my-2">
+                  <div>String 1: <span class="text-slate-800 font-semibold">{pvString1.p} kW</span></div>
+                  <div>String 2: <span class="text-slate-800 font-semibold">{pvString2.p} kW</span></div>
                 </div>
               </div>
 
-              <!-- Controls -->
-              <div class="pt-3 border-t border-[#262626] flex flex-col gap-2.5">
-                <div class="flex justify-between items-center text-xs">
-                  <div>
-                    <span class="text-white font-medium block">Koneksi Inverter</span>
-                    <span class="text-[10px] text-[#737373]">Saklar utama PV</span>
-                  </div>
+              <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-slate-700">Saklar Inverter Utama</span>
                   <button 
-                    class="w-8 h-4 rounded-full transition-colors p-0.5 flex items-center {pvInverterEnabled ? 'bg-[#22c55e] justify-end' : 'bg-[#333] justify-start'}"
+                    class="w-8 h-4 rounded-full transition-colors p-0.5 flex items-center {pvInverterEnabled ? 'bg-emerald-500 justify-end' : 'bg-slate-300 justify-start'}"
                     on:click={togglePvInverter}
-                    aria-label="Toggle Inverter PV"
+                    aria-label="Toggle Inverter"
                   >
-                    <div class="w-3 h-3 rounded-full bg-white shadow-sm"></div>
+                    <div class="w-3 h-3 rounded-full bg-white shadow-xs"></div>
                   </button>
                 </div>
-
-                <div>
-                  <div class="flex justify-between text-[11px] text-[#737373] mb-1">
-                    <span>Pembatasan Daya (Curtailment)</span>
-                    <span class="text-white font-medium">{pvLimitPercent}%</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="10" 
-                    max="100" 
-                    step="5"
-                    bind:value={pvLimitPercent}
-                    class="w-full accent-[#22c55e] h-1 bg-[#262626] rounded cursor-pointer"
-                  />
+                <div class="flex justify-between text-[10px] text-slate-500">
+                  <span>Curtailment: {pvLimitPercent}%</span>
                 </div>
               </div>
             </div>
 
-            <!-- CARD 4: BEBAN (LOAD MONITORING) -->
-            <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex flex-col justify-between hover:border-[#383838] transition-colors">
+            <!-- CARD 4: BEBAN GEDUNG -->
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2 text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
-                    <svg class="w-3.5 h-3.5 text-[#e5e5e5]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <svg class="w-3.5 h-3.5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"></path>
                     </svg>
-                    Beban (Load)
+                    Beban Gedung
                   </div>
-                  <span class="text-xs font-medium px-2 py-0.5 rounded bg-[#16222f] text-[#38bdf8] border border-[#1f374e]">
-                    Normal
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    PF: {loadPowerFactor}
                   </span>
                 </div>
 
-                <!-- Primary Value -->
-                <div class="text-2xl font-light text-white tracking-tight mt-1">
-                  {totalLoadPower.toFixed(2)} <span class="text-xs text-[#737373] font-normal">kW</span>
+                <div class="text-2xl font-bold text-slate-900 tracking-tight mt-1">
+                  {totalLoadPower.toFixed(2)} <span class="text-xs text-slate-500 font-normal">kW</span>
                 </div>
-                <div class="text-xs text-[#737373] mt-0.5">
-                  Konsumsi aktif Gedung 3 FT saat ini
+                <div class="text-xs text-slate-500 mt-0.5">
+                  Konsumsi Hari Ini: {loadDailyConsumption} kWh
                 </div>
 
-                <!-- Telemetry Metrics -->
-                <div class="grid grid-cols-2 gap-2 text-[11px] text-[#737373] py-2 mt-4 border-t border-[#262626]">
-                  <div>Konsumsi Hari Ini: <span class="text-white font-medium">{loadDailyConsumption} kWh</span></div>
-                  <div>Beban Puncak: <span class="text-white font-medium">{loadPeakToday} kW</span></div>
-                  <div>Tegangan: <span class="text-white font-medium">{loadVoltage} V</span></div>
-                  <div>Power Factor: <span class="text-white font-medium">{loadPowerFactor}</span></div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-500 py-3 border-t border-slate-100 my-2">
+                  <div>Beban Puncak: <span class="text-slate-800 font-semibold">{loadPeakToday} kW</span></div>
+                  <div>Tegangan: <span class="text-slate-800 font-semibold">{loadVoltage} V</span></div>
                 </div>
               </div>
 
-              <!-- Energy Source Distribution -->
-              <div class="pt-3 border-t border-[#262626] flex flex-col gap-2">
-                <div class="flex justify-between items-center text-xs text-[#737373]">
-                  <span>Sumber Pasokan Daya</span>
-                  <span class="text-white font-medium">{effectivePv >= totalLoadPower ? '100% Mandiri (PV)' : 'Hibrida PV & Grid'}</span>
-                </div>
-                <div class="w-full bg-[#262626] h-1.5 rounded-full overflow-hidden flex">
-                  <div class="bg-[#22c55e] h-full" style="width: {Math.min(100, Math.round((effectivePv / (totalLoadPower || 1)) * 100))}%;" title="PV"></div>
-                  <div class="bg-[#38bdf8] h-full flex-1" title="Grid"></div>
-                </div>
-                <div class="flex justify-between text-[10px] text-[#737373]">
-                  <span>PV: {Math.min(100, Math.round((effectivePv / (totalLoadPower || 1)) * 100))}%</span>
-                  <span>Grid: {Math.max(0, 100 - Math.min(100, Math.round((effectivePv / (totalLoadPower || 1)) * 100)))}%</span>
-                </div>
+              <div class="pt-3 border-t border-slate-100 text-xs text-slate-500">
+                <span class="font-medium text-slate-700">Pasokan Mandiri PV:</span> {Math.min(100, Math.round((effectivePv / (totalLoadPower || 1)) * 100))}%
               </div>
             </div>
 
           </div>
 
-          <!-- Subtle Footer Link -->
-          <div class="pt-1 flex justify-end">
-            <button 
-              class="text-xs text-[#888] hover:text-white flex items-center gap-1 transition-colors"
-              on:click={() => activeTab = 'Kontrol Energi'}
-            >
-              <span>Parameter Sistem EMS & Log Riwayat Dispatch ›</span>
-            </button>
-          </div>
-
-        </section>
-
-        <!-- Bottom Section: Graphs -->
-        <section class="bg-[#222222] border border-[#2e2e2e] rounded-xl overflow-hidden flex flex-col">
-          <!-- Graph Header Tabs -->
-          <div class="flex flex-col sm:flex-row justify-between sm:items-center px-5 border-b border-[#2d2d2d] bg-[#222] gap-3 py-1 sm:py-0">
-            <div class="flex gap-2 sm:gap-6 overflow-x-auto no-scrollbar">
-              {#each ['Power Curve', 'Energy Monitoring', 'Generation Comparison', 'Heatmap'] as tab}
-                <button 
-                  class="py-3.5 text-xs transition-all border-b-2 whitespace-nowrap {chartTab === tab ? 'border-[#ff4f00] text-white font-semibold' : 'border-transparent text-[#737373] hover:text-[#d4d4d4]'}"
-                  on:click={() => chartTab = tab}
-                >
-                  {tab}
-                </button>
+          <!-- Dispatch Logs Table -->
+          <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 sm:p-6">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
+              Riwayat Dispatch & Log Sistem AI-EMS
+            </h3>
+            <div class="flex flex-col gap-2">
+              {#each emsLogs as log}
+                <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                  <div class="flex items-center gap-3">
+                    <span class="font-mono text-slate-400 text-[11px]">{log.time}</span>
+                    <span class="text-slate-700 font-medium">{log.text}</span>
+                  </div>
+                  <span class="text-[10px] font-bold uppercase tracking-tight {log.type === 'success' ? 'text-emerald-600' : log.type === 'warning' ? 'text-amber-600' : 'text-sky-600'}">
+                    {log.type}
+                  </span>
+                </div>
               {/each}
             </div>
-            <div class="flex items-center gap-3 py-2 sm:py-0 self-end sm:self-auto">
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1a1a1a] border border-[#2e2e2e] text-[11px] text-[#22c55e]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse"></span>
-                Telemetry Live
-              </span>
-              <div class="bg-[#1a1a1a] border border-[#2e2e2e] text-xs px-2.5 py-1 rounded flex items-center justify-between w-[125px] text-[#a3a3a3]">
-                <span class="text-[#666] cursor-pointer hover:text-white">‹</span>
-                <span>17/10/2026</span>
-                <span class="text-[#666] cursor-pointer hover:text-white">›</span>
-              </div>
-            </div>
           </div>
+
+        </div>
+
+      <!-- ============================================================== -->
+      <!-- TAB: PREDIKSI & ANALITIK (BMKG / AI SOLAR FORECAST)            -->
+      <!-- ============================================================== -->
+      {:else if activeTab === 'Prediksi & Analitik'}
+        <div class="flex flex-col gap-6 fade-in">
           
-          <!-- Dynamic KPI Cards for the Active Tab -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-5 pb-0">
-            {#if chartTab === 'Power Curve'}
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Puncak PV (Today)</div>
-                <div class="text-xl font-light text-[#ff4f00] mt-0.5">5.82 <span class="text-xs text-[#737373]">kW</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
-                  Pukul 12:00 WIB (82% STC)
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Rata-rata Beban</div>
-                <div class="text-xl font-light text-[#38bdf8] mt-0.5">1.36 <span class="text-xs text-[#737373]">kW</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
-                  Peak 1.85 kW (15:00)
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Net Baterai ESS</div>
-                <div class="text-xl font-light text-[#22c55e] mt-0.5">+0.76 <span class="text-xs text-[#737373]">kW</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
-                  Charging Mode · SOC 78%
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Net Ekspor Grid PLN</div>
-                <div class="text-xl font-light text-[#a855f7] mt-0.5">1.90 <span class="text-xs text-[#737373]">kW</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#a855f7]"></span>
-                  Surplus Feed-in Aktif
-                </div>
-              </div>
-
-            {:else if chartTab === 'Energy Monitoring'}
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Total PV Yield (7H)</div>
-                <div class="text-xl font-light text-[#ff4f00] mt-0.5">206.2 <span class="text-xs text-[#737373]">kWh</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
-                  Rata-rata 29.5 kWh/hari
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Konsumsi Beban (7H)</div>
-                <div class="text-xl font-light text-[#38bdf8] mt-0.5">112.2 <span class="text-xs text-[#737373]">kWh</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
-                  Rasio Mandiri 68.4%
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Total Ekspor PLN (7H)</div>
-                <div class="text-xl font-light text-[#22c55e] mt-0.5">97.4 <span class="text-xs text-[#737373]">kWh</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
-                  Offset Biaya Listrik FT
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Performance Ratio (PR)</div>
-                <div class="text-xl font-light text-[#f59e0b] mt-0.5">86.1 <span class="text-xs text-[#737373]">%</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
-                  Kategori: Sangat Optimal
-                </div>
-              </div>
-
-            {:else if chartTab === 'Generation Comparison'}
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Hari Ini (17 Okt)</div>
-                <div class="text-xl font-light text-[#ff4f00] mt-0.5">27.80 <span class="text-xs text-[#737373]">kWh</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
-                  Peak 5.82 kW (12:00 WIB)
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Kemarin (16 Okt)</div>
-                <div class="text-xl font-light text-[#a3a3a3] mt-0.5">24.40 <span class="text-xs text-[#737373]">kWh</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#737373]"></span>
-                  Peak 5.30 kW
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Delta Pembangkitan</div>
-                <div class="text-xl font-light text-[#22c55e] mt-0.5">+13.9 <span class="text-xs text-[#737373]">%</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
-                  +3.40 kWh vs Kemarin
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Peak Sun Hours (PSH)</div>
-                <div class="text-xl font-light text-[#38bdf8] mt-0.5">4.42 <span class="text-xs text-[#737373]">Jam</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
-                  Target STC 4.0h tercapai
-                </div>
-              </div>
-
-            {:else if chartTab === 'Heatmap'}
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Jendela Radiasi Puncak</div>
-                <div class="text-xl font-light text-[#ff4f00] mt-0.5">11:00 - 13:30 <span class="text-xs text-[#737373]">WIB</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></span>
-                  Intensitas konsisten > 5.0 kW
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Rata-rata Siang Hari</div>
-                <div class="text-xl font-light text-[#f59e0b] mt-0.5">4.85 <span class="text-xs text-[#737373]">kW</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
-                  Kondisi cerah stabil
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Anomali Cuaca Terdeteksi</div>
-                <div class="text-xl font-light text-[#ec4899] mt-0.5">Selasa 14:00 <span class="text-xs text-[#737373]">WIB</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#ec4899]"></span>
-                  Penurunan mendung lokal (1.2 kW)
-                </div>
-              </div>
-              <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-                <div class="text-[10px] text-[#737373] uppercase tracking-wider font-medium">Stabilitas Matriks Surya</div>
-                <div class="text-xl font-light text-[#22c55e] mt-0.5">92.4 <span class="text-xs text-[#737373]">%</span></div>
-                <div class="text-[10px] text-[#888] mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
-                  Bebas shading struktural
-                </div>
-              </div>
-            {/if}
-          </div>
-
-          <!-- Chart Canvas Container -->
-          <div class="p-5">
-            <div class="w-full h-[340px] bg-[#1a1a1a]/40 rounded-lg p-2 border border-[#262626]">
-              <Chart option={activeDashboardChartOption} />
-            </div>
-
-            <!-- Tab Engineering Insight Footer -->
-            <div class="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-xs text-[#888]">
-              <div class="flex items-start md:items-center gap-2.5">
-                <svg class="w-4 h-4 text-[#ff4f00] shrink-0 mt-0.5 md:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>
-                  {#if chartTab === 'Power Curve'}
-                    <strong class="text-white">Persamaan Keseimbangan Daya:</strong> <span class="text-[#bbb]">P_pv (5.82 kW) = P_load (1.36 kW) + P_batt (+0.76 kW) + P_grid (1.90 kW Ekspor)</span>. Sistem beroperasi dalam efisiensi optimal tanpa curtailment.
-                  {:else if chartTab === 'Energy Monitoring'}
-                    <strong class="text-white">Audit Neraca Energi Mingguan:</strong> Total pembangkitan 206.2 kWh mampu menyuplai beban siang hari Gedung 3 FT, dengan kelebihan 97.4 kWh diekspor ke PLN untuk menekan tagihan listrik bulanan.
-                  {:else if chartTab === 'Generation Comparison'}
-                    <strong class="text-white">Analisis Komparatif:</strong> Kurva daya hari ini mencapai 82.0% dari kapasitas puncak teoritis STC (7.1 kWp), membuktikan panel surya bersih dari debu (soiling) dan MPPT bekerja optimal.
-                  {:else if chartTab === 'Heatmap'}
-                    <strong class="text-white">Pola Insolasi Mingguan:</strong> Matriks visual menunjukkan distribusi penyinaran matahari dari 06:00 hingga 18:00 WIB. Warna oranye terang menandakan periode produksi puncak (Peak Sun Hours) bebas bayangan.
-                  {/if}
+          <!-- Top Toolbar: Header & Source Switcher -->
+          <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div>
+              <div class="flex items-center gap-2.5">
+                <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Prediksi & Analitik Pembangkitan Energi Surya</h1>
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Model Aktif: {weatherModelSource}
                 </span>
               </div>
-              <div class="flex items-center gap-2 shrink-0 text-[11px] text-[#666]">
-                <span>Resolusi: 60 Menit</span>
-                <span>•</span>
-                <span>RTU-01 Telemetry</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-    <!-- ============================================================== -->
-    <!-- DEDICATED TAB: KONTROL ENERGI FULL MANAGEMENT SUITE           -->
-    <!-- ============================================================== -->
-    {:else if activeTab === 'Kontrol Energi'}
-      <div class="flex flex-col gap-6 fade-in">
-        
-        <!-- Top Banner & Global Switch -->
-        <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 class="text-lg font-semibold text-white tracking-tight">Sistem Manajemen & Kontrol Energi (EMS)</h1>
-            <p class="text-xs text-[#737373] mt-0.5">Konfigurasi operasional pembangkitan PLTS Gedung 3 FT dan proteksi daya</p>
-          </div>
-
-          <div class="flex items-center bg-[#181818] p-1 rounded-lg border border-[#2c2c2c]">
-            <button 
-              class="px-4 py-2 rounded-md text-xs font-medium transition-all {controlMode === 'auto' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-[#888] hover:text-white'}"
-              on:click={() => toggleControlMode('auto')}
-            >
-              Mode Otomatis (AI-EMS)
-            </button>
-            <button 
-              class="px-4 py-2 rounded-md text-xs font-medium transition-all {controlMode === 'manual' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-[#888] hover:text-white'}"
-              on:click={() => toggleControlMode('manual')}
-            >
-              Mode Manual
-            </button>
-          </div>
-        </div>
-
-        <!-- 4 Detailed Control Panels -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          <!-- PANEL 1: BATERAI (BESS) -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-5">
-            <div class="flex justify-between items-center pb-3 border-b border-[#2d2d2d]">
-              <div>
-                <h3 class="font-medium text-white text-sm">Manajemen Baterai (BESS)</h3>
-                <span class="text-xs text-[#737373]">Lithium Iron Phosphate (LFP) 12.0 kWh</span>
-              </div>
-              <div class="text-right">
-                <span class="text-xl font-light text-white">{batterySoc}%</span>
-                <span class="text-[10px] text-[#737373] block">State of Charge</span>
-              </div>
-            </div>
-
-            <!-- SOC Progress & Metrics -->
-            <div class="flex flex-col gap-2">
-              <div class="w-full bg-[#181818] h-2 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-500 bg-[#22c55e]" style="width: {batterySoc}%;"></div>
-              </div>
-              <div class="flex justify-between text-xs text-[#737373]">
-                <span>Cadangan Min: {batteryMinSocCutoff}%</span>
-                <span class="text-white font-medium">Status: {batteryStatus === 'charging' ? `Mengisi (+${batteryPower.toFixed(2)} kW)` : batteryStatus === 'discharging' ? `Mengosongkan (-${batteryPower.toFixed(2)} kW)` : 'Siaga'}</span>
-                <span>Kapasitas: {batteryCapacityTotal} kWh</span>
-              </div>
-            </div>
-
-            <!-- Telemetry Grid -->
-            <div class="grid grid-cols-4 gap-2 bg-[#1a1a1a] p-3 rounded-lg border border-[#282828] text-center text-xs">
-              <div>
-                <span class="text-[10px] text-[#737373] block">Tegangan</span>
-                <span class="text-white font-medium">{batteryVoltage} V</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Arus</span>
-                <span class="text-white font-medium">{batteryCurrent} A</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Suhu Sel</span>
-                <span class="text-white font-medium">{batteryTemp} °C</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Kesehatan</span>
-                <span class="text-[#22c55e] font-medium">{batteryHealth}%</span>
-              </div>
-            </div>
-
-            <!-- Manual Dispatch Buttons -->
-            <div class="flex flex-col gap-2">
-              <span class="text-xs text-[#a3a3a3]">Mode Operasional Baterai</span>
-              <div class="grid grid-cols-4 gap-2">
-                {#each [
-                  { id: 'auto', label: 'Otomatis' },
-                  { id: 'charge', label: 'Paksa Isi' },
-                  { id: 'discharge', label: 'Paksa Kosong' },
-                  { id: 'standby', label: 'Siaga' }
-                ] as bmode}
-                  <button 
-                    class="py-1.5 px-2 rounded text-xs transition-colors {batteryManualMode === bmode.id ? 'bg-[#2a2a2a] text-white font-medium border border-[#3d3d3d]' : 'bg-[#1a1a1a] text-[#737373] border border-[#2a2a2a] hover:text-white'}"
-                    on:click={() => {
-                      if (controlMode !== 'manual') toggleControlMode('manual');
-                      setBatteryMode(bmode.id as any);
-                    }}
-                  >
-                    {bmode.label}
-                  </button>
-                {/each}
-              </div>
-            </div>
-
-            <!-- Sliders for Limits -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#2d2d2d]">
-              <div>
-                <div class="flex justify-between text-xs text-[#737373] mb-1">
-                  <span>Batas Daya Pengisian</span>
-                  <span class="text-white font-medium">{batteryMaxChargePower} kW</span>
-                </div>
-                <input type="range" min="0.5" max="3.0" step="0.1" bind:value={batteryMaxChargePower} class="w-full accent-[#22c55e] h-1 bg-[#262626] rounded cursor-pointer" />
-              </div>
-              <div>
-                <div class="flex justify-between text-xs text-[#737373] mb-1">
-                  <span>Ambang Cadangan Minimum</span>
-                  <span class="text-white font-medium">{batteryMinSocCutoff}%</span>
-                </div>
-                <input type="range" min="10" max="50" step="5" bind:value={batteryMinSocCutoff} class="w-full accent-[#ff4f00] h-1 bg-[#262626] rounded cursor-pointer" />
-              </div>
-            </div>
-          </div>
-
-          <!-- PANEL 2: GRID PLN -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-5">
-            <div class="flex justify-between items-center pb-3 border-b border-[#2d2d2d]">
-              <div>
-                <h3 class="font-medium text-white text-sm">Interkoneksi Grid PLN</h3>
-                <span class="text-xs text-[#737373]">Sinkronisasi Jaringan 3-Phase 220V/380V</span>
-              </div>
-              <div class="text-right">
-                <span class="text-xl font-light {gridMode === 'export' ? 'text-[#22c55e]' : 'text-[#38bdf8]'}">
-                  {gridPower.toFixed(2)} kW
-                </span>
-                <span class="text-[10px] text-[#737373] block">{gridMode === 'export' ? 'Ekspor ke PLN' : 'Impor dari PLN'}</span>
-              </div>
-            </div>
-
-            <!-- Grid Parameters -->
-            <div class="grid grid-cols-4 gap-2 bg-[#1a1a1a] p-3 rounded-lg border border-[#282828] text-center text-xs">
-              <div>
-                <span class="text-[10px] text-[#737373] block">Tegangan</span>
-                <span class="text-white font-medium">{gridVoltage} V</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Frekuensi</span>
-                <span class="text-white font-medium">{gridFrequency} Hz</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Ekspor Hari Ini</span>
-                <span class="text-white font-medium">{gridDailyExport} kWh</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Impor Hari Ini</span>
-                <span class="text-white font-medium">{gridDailyImport} kWh</span>
-              </div>
-            </div>
-
-            <!-- Zero Export Toggle -->
-            <div class="p-4 bg-[#1a1a1a] rounded-lg border border-[#282828] flex items-center justify-between">
-              <div>
-                <div class="text-xs font-medium text-white">Mode Zero Export</div>
-                <div class="text-xs text-[#737373] mt-0.5">Membatasi kelebihan daya agar tidak mengalir ke jaringan PLN</div>
-              </div>
-              <button 
-                class="w-8 h-4 rounded-full transition-colors p-0.5 flex items-center {zeroExportEnabled ? 'bg-[#ff4f00] justify-end' : 'bg-[#333] justify-start'}"
-                on:click={toggleZeroExport}
-                aria-label="Toggle Zero Export"
-              >
-                <div class="w-3 h-3 rounded-full bg-white shadow-sm"></div>
-              </button>
-            </div>
-
-            <!-- Export Limit Slider -->
-            <div class="flex flex-col gap-1">
-              <div class="flex justify-between text-xs text-[#737373]">
-                <span>Batas Daya Ekspor Maksimal</span>
-                <span class="text-white font-medium">{exportLimit.toFixed(1)} kW</span>
-              </div>
-              <input type="range" min="0" max="5.0" step="0.5" bind:value={exportLimit} class="w-full accent-[#ff4f00] h-1 bg-[#262626] rounded cursor-pointer" />
-            </div>
-          </div>
-
-          <!-- PANEL 3: PV PANEL SURYA -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-5">
-            <div class="flex justify-between items-center pb-3 border-b border-[#2d2d2d]">
-              <div>
-                <h3 class="font-medium text-white text-sm">Output Panel Surya (PV)</h3>
-                <span class="text-xs text-[#737373]">Kapasitas Terpasang 7.1 kWp</span>
-              </div>
-              <div class="text-right">
-                <span class="text-xl font-light text-white">{effectivePv.toFixed(3)} kW</span>
-                <span class="text-[10px] text-[#737373] block">Daya Aktif</span>
-              </div>
-            </div>
-
-            <!-- String Telemetry -->
-            <div class="grid grid-cols-2 gap-3">
-              <div class="bg-[#1a1a1a] p-3 rounded-lg border border-[#282828]">
-                <div class="text-xs text-[#737373]">PV String 1 (Atap Barat)</div>
-                <div class="text-base font-light text-white mt-0.5">{pvString1.p} kW</div>
-                <div class="text-[10px] text-[#666] mt-0.5">{pvString1.v} V · {pvString1.i} A</div>
-              </div>
-              <div class="bg-[#1a1a1a] p-3 rounded-lg border border-[#282828]">
-                <div class="text-xs text-[#737373]">PV String 2 (Atap Timur)</div>
-                <div class="text-base font-light text-white mt-0.5">{pvString2.p} kW</div>
-                <div class="text-[10px] text-[#666] mt-0.5">{pvString2.v} V · {pvString2.i} A</div>
-              </div>
-            </div>
-
-            <!-- Inverter Switch -->
-            <div class="p-4 bg-[#1a1a1a] rounded-lg border border-[#282828] flex items-center justify-between">
-              <div>
-                <div class="text-xs font-medium text-white">Status Operasi Inverter</div>
-                <div class="text-xs text-[#737373] mt-0.5">Koneksi saklar utama pembangkitan surya</div>
-              </div>
-              <button 
-                class="w-8 h-4 rounded-full transition-colors p-0.5 flex items-center {pvInverterEnabled ? 'bg-[#22c55e] justify-end' : 'bg-[#333] justify-start'}"
-                on:click={togglePvInverter}
-                aria-label="Toggle Inverter"
-              >
-                <div class="w-3 h-3 rounded-full bg-white shadow-sm"></div>
-              </button>
-            </div>
-
-            <!-- Curtailment Limit -->
-            <div class="flex flex-col gap-1">
-              <div class="flex justify-between text-xs text-[#737373]">
-                <span>Pembatasan Output Panel Surya (Curtailment)</span>
-                <span class="text-white font-medium">{pvLimitPercent}%</span>
-              </div>
-              <input type="range" min="10" max="100" step="5" bind:value={pvLimitPercent} class="w-full accent-[#22c55e] h-1 bg-[#262626] rounded cursor-pointer" />
-            </div>
-          </div>
-
-          <!-- PANEL 4: LOAD MONITORING -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-5">
-            <div class="flex justify-between items-center pb-3 border-b border-[#2d2d2d]">
-              <div>
-                <h3 class="font-medium text-white text-sm">Pemantauan Konsumsi Beban (Load)</h3>
-                <span class="text-xs text-[#737373]">Monitoring Konsumsi Gedung 3 FT</span>
-              </div>
-              <div class="text-right">
-                <span class="text-xl font-light text-white">{totalLoadPower.toFixed(2)} kW</span>
-                <span class="text-[10px] text-[#737373] block">Daya Aktif Saat Ini</span>
-              </div>
-            </div>
-
-            <!-- Telemetry Grid -->
-            <div class="grid grid-cols-4 gap-2 bg-[#1a1a1a] p-3 rounded-lg border border-[#282828] text-center text-xs">
-              <div>
-                <span class="text-[10px] text-[#737373] block">Konsumsi Hari Ini</span>
-                <span class="text-white font-medium">{loadDailyConsumption} kWh</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Beban Puncak</span>
-                <span class="text-white font-medium">{loadPeakToday} kW</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Tegangan</span>
-                <span class="text-white font-medium">{loadVoltage} V</span>
-              </div>
-              <div>
-                <span class="text-[10px] text-[#737373] block">Power Factor</span>
-                <span class="text-white font-medium">{loadPowerFactor}</span>
-              </div>
-            </div>
-
-            <!-- Energy Balance Details -->
-            <div class="p-4 bg-[#1a1a1a] rounded-lg border border-[#282828] flex flex-col gap-2.5">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-white font-medium">Distribusi Pasokan Beban</span>
-                <span class="text-[#22c55e] font-medium">{effectivePv >= totalLoadPower ? 'Didukung Penuh Energi Terbarukan (PV)' : 'Didukung Kombinasi PV & Grid'}</span>
-              </div>
-              <div class="w-full bg-[#262626] h-2 rounded-full overflow-hidden flex">
-                <div class="bg-[#22c55e] h-full" style="width: {Math.min(100, Math.round((effectivePv / (totalLoadPower || 1)) * 100))}%;"></div>
-                <div class="bg-[#38bdf8] h-full flex-1"></div>
-              </div>
-              <div class="flex justify-between text-[11px] text-[#737373]">
-                <span>Kontribusi PV: {Math.min(100, Math.round((effectivePv / (totalLoadPower || 1)) * 100))}% ({Math.min(effectivePv, totalLoadPower).toFixed(2)} kW)</span>
-                <span>Kontribusi Grid: {Math.max(0, 100 - Math.min(100, Math.round((effectivePv / (totalLoadPower || 1)) * 100)))}% ({Math.max(0, totalLoadPower - effectivePv).toFixed(2)} kW)</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Dispatch Logs Table -->
-        <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3] mb-3">
-            Riwayat Dispatch & Log Sistem
-          </h3>
-          <div class="flex flex-col gap-1.5">
-            {#each emsLogs as log}
-              <div class="flex items-center justify-between py-2 px-3 rounded bg-[#1a1a1a] border border-[#282828] text-xs">
-                <div class="flex items-center gap-3">
-                  <span class="font-mono text-[#666] text-[11px]">{log.time}</span>
-                  <span class="text-[#d4d4d4]">{log.text}</span>
-                </div>
-                <span class="text-[10px] font-medium uppercase tracking-tight {log.type === 'success' ? 'text-[#22c55e]' : log.type === 'warning' ? 'text-[#f59e0b]' : 'text-[#38bdf8]'}">
-                  {log.type}
-                </span>
-              </div>
-            {/each}
-          </div>
-        </div>
-
-      </div>
-      
-    <!-- ============================================================== -->
-    <!-- DEDICATED TAB: PREDIKSI & ANALITIK MANAGEMENT SUITE            -->
-    <!-- ============================================================== -->
-    {:else if activeTab === 'Prediksi & Analitik'}
-      <div class="flex flex-col gap-6 fade-in">
-        
-        <!-- Top Toolbar: Header & Source Switcher -->
-        <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div>
-            <div class="flex items-center gap-2.5">
-              <h1 class="text-lg font-semibold text-white tracking-tight">Prediksi & Analitik Pembangkitan Energi Surya</h1>
-              <span class="text-[10px] px-2 py-0.5 rounded font-medium bg-[#16231a] text-[#22c55e] border border-[#1b4332]">
-                Model Aktif: {weatherModelSource}
-              </span>
-            </div>
-            <p class="text-xs text-[#737373] mt-1">
-              Estimasi produksi harian/mingguan, kalkulasi potensi teknis PV 7.10 kWp, dan integrasi parameter cuaca BMKG & OpenWeather
-            </p>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-3">
-            <!-- Weather API Source Switcher -->
-            <div class="flex items-center bg-[#181818] p-1 rounded-lg border border-[#2c2c2c]">
-              <button 
-                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all {weatherModelSource === 'BMKG' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-[#888] hover:text-white'}"
-                on:click={() => switchWeatherSource('BMKG')}
-              >
-                Model BMKG
-              </button>
-              <button 
-                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all {weatherModelSource === 'OpenWeather' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-[#888] hover:text-white'}"
-                on:click={() => switchWeatherSource('OpenWeather')}
-              >
-                OpenWeather Solar
-              </button>
-            </div>
-
-            <!-- Timeframe Selector (Hourly vs Weekly) -->
-            <div class="flex items-center bg-[#181818] p-1 rounded-lg border border-[#2c2c2c]">
-              <button 
-                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all {analyticsViewMode === 'hourly' ? 'bg-[#2a2a2a] text-white font-medium border border-[#3d3d3d]' : 'text-[#888] hover:text-white'}"
-                on:click={() => analyticsViewMode = 'hourly'}
-              >
-                Per Jam (24 Jam)
-              </button>
-              <button 
-                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all {analyticsViewMode === 'weekly' ? 'bg-[#2a2a2a] text-white font-medium border border-[#3d3d3d]' : 'text-[#888] hover:text-white'}"
-                on:click={() => analyticsViewMode = 'weekly'}
-              >
-                Mingguan (7 Hari)
-              </button>
-            </div>
-
-            <!-- Sync / Perbarui Button -->
-            <button 
-              class="px-3 py-1.5 rounded-lg bg-[#181818] hover:bg-[#252525] border border-[#2c2c2c] text-xs text-[#a3a3a3] hover:text-white flex items-center gap-1.5 transition-colors"
-              on:click={() => showToast('Sinkronisasi data prakiraan cuaca & estimasi daya berhasil')}
-              title="Perbarui Data Cuaca"
-            >
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Sync</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- KPI Summary Cards (4 Columns) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          <!-- Card 1: Estimasi Produksi Harian -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5 flex flex-col justify-between hover:border-[#383838] transition-colors">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3]">Estimasi Produksi Hari Ini</span>
-                <span class="w-2 h-2 rounded-full bg-[#22c55e]"></span>
-              </div>
-              <div class="my-2">
-                <span class="text-2xl font-light text-white">31.40 <span class="text-xs text-[#737373]">kWh</span></span>
-                <span class="text-[11px] text-[#22c55e] block font-medium mt-0.5">Realisasi: 27.80 kWh (88.5%)</span>
-              </div>
-            </div>
-            <div class="flex flex-col gap-1.5 pt-3 border-t border-[#2a2a2a]">
-              <div class="w-full bg-[#181818] h-1.5 rounded-full overflow-hidden">
-                <div class="bg-[#22c55e] h-full rounded-full" style="width: 88.5%;"></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-[#737373]">
-                <span>Confidence: 96%</span>
-                <span>Deviasi: +1.8%</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 2: Potensi Energi Teknis PV -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5 flex flex-col justify-between hover:border-[#383838] transition-colors">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3]">Potensi Teknis PV (Live)</span>
-                <span class="text-[10px] text-[#ff4f00] font-medium">Cap: 7.10 kWp</span>
-              </div>
-              <div class="my-2">
-                <span class="text-2xl font-light text-white">{technicalPvPotentialKw.toFixed(2)} <span class="text-xs text-[#737373]">kW</span></span>
-                <span class="text-[11px] text-[#22c55e] block font-medium mt-0.5">Daya Riil: {currentActualKw.toFixed(2)} kW</span>
-              </div>
-            </div>
-            <div class="flex flex-col gap-1.5 pt-3 border-t border-[#2a2a2a]">
-              <div class="w-full bg-[#181818] h-1.5 rounded-full overflow-hidden">
-                <div class="bg-[#ff4f00] h-full rounded-full" style="width: {potentialRealizationRatio}%;"></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-[#737373]">
-                <span>Pemanfaatan: {potentialRealizationRatio.toFixed(1)}%</span>
-                <span>Inverter Eff: 97.8%</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 3: Radiasi Matahari & PSH -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5 flex flex-col justify-between hover:border-[#383838] transition-colors">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3]">Radiasi Matahari (POA)</span>
-                <span class="text-[10px] text-[#38bdf8] font-medium">Tilt 15°</span>
-              </div>
-              <div class="my-2">
-                <span class="text-2xl font-light text-white">{weatherCurrent.irradiancePoa} <span class="text-xs text-[#737373]">W/m²</span></span>
-                <span class="text-[11px] text-[#a3a3a3] block font-medium mt-0.5">GHI: {weatherCurrent.irradianceGhi} W/m² · PSH: {weatherCurrent.phel}j</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between pt-3 border-t border-[#2a2a2a] text-[10px] text-[#737373]">
-              <span>Indeks UV: {weatherCurrent.uvIndex} (Tinggi)</span>
-              <span>Insolasi: Baik</span>
-            </div>
-          </div>
-
-          <!-- Card 4: Kondisi Atmosfer & Termal -->
-          <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-5 flex flex-col justify-between hover:border-[#383838] transition-colors">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold uppercase tracking-wider text-[#a3a3a3]">Kondisi Termal & Modul</span>
-                <span class="text-[10px] text-[#a3a3a3]">Sandia Model</span>
-              </div>
-              <div class="my-2">
-                <span class="text-2xl font-light text-white">{calculatedCellTemp.toFixed(1)} <span class="text-xs text-[#737373]">°C</span></span>
-                <span class="text-[11px] text-[#f59e0b] block font-medium mt-0.5">Ambient {weatherCurrent.tempAmbient}°C · Loss: -{thermalLossPct.toFixed(2)}%</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between pt-3 border-t border-[#2a2a2a] text-[10px] text-[#737373]">
-              <span>Tutupan Awan: {weatherCurrent.cloudCoverTotal}%</span>
-              <span>Angin: {weatherCurrent.windSpeed} km/h</span>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Main Chart Section: Prediksi vs Realisasi Curve -->
-        <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#2d2d2d]">
-            <div>
-              <h2 class="text-sm font-semibold text-white tracking-tight">
-                {analyticsViewMode === 'hourly' ? 'Kurva Pembangkitan: Prediksi vs Realisasi Daya (24 Jam)' : 'Prospek Produksi Energi Mingguan (7 Hari)'}
-              </h2>
-              <span class="text-xs text-[#737373]">
-                {analyticsViewMode === 'hourly' ? 'Perbandingan daya aktual inverter vs estimasi model cuaca dan potensi fluks radiasi matahari' : 'Estimasi akumulasi produksi energi harian berdasarkan parameter tutupan awan & jam puncak matahari (PSH)'}
-              </span>
-            </div>
-
-            <div class="flex items-center gap-2 self-start sm:self-auto text-xs text-[#737373]">
-              <span>Sumber Data:</span>
-              <span class="text-white font-medium bg-[#1a1a1a] px-2.5 py-1 rounded border border-[#2e2e2e]">
-                {weatherCurrent.source}
-              </span>
-            </div>
-          </div>
-
-          <!-- Chart Area -->
-          <div class="w-full h-[320px] relative">
-            <Chart option={analyticsViewMode === 'hourly' ? hourlyPredictionChartOption : weeklyPredictionChartOption} />
-          </div>
-
-          <!-- Bottom Metric Legend Chips -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-[#2d2d2d] text-xs">
-            <div class="bg-[#1a1a1a] p-2.5 rounded border border-[#282828]">
-              <span class="text-[10px] text-[#737373] block">Puncak Prediksi Daya</span>
-              <span class="text-white font-medium">5.82 kW (12:00 WIB)</span>
-            </div>
-            <div class="bg-[#1a1a1a] p-2.5 rounded border border-[#282828]">
-              <span class="text-[10px] text-[#737373] block">Rata-rata Produksi Mingguan</span>
-              <span class="text-white font-medium">{avgDailyPredictedKwh} kWh / hari</span>
-            </div>
-            <div class="bg-[#1a1a1a] p-2.5 rounded border border-[#282828]">
-              <span class="text-[10px] text-[#737373] block">Evaluasi Akurasi Model</span>
-              <span class="text-[#22c55e] font-medium">95.4% (MAE: 0.18 kW)</span>
-            </div>
-            <div class="bg-[#1a1a1a] p-2.5 rounded border border-[#282828]">
-              <span class="text-[10px] text-[#737373] block">Status Peringatan Cuaca</span>
-              <span class="text-[#38bdf8] font-medium">Intermitensi Rendah (Kondusif)</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Detailed Formula Engine & Calculation Breakdown (IEC 61724-1 Standard) -->
-        <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-5">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#2d2d2d]">
-            <div>
-              <h3 class="text-sm font-semibold text-white tracking-tight">Kalkulasi Transparan Potensi Energi PV Gedung 3 FT</h3>
-              <p class="text-xs text-[#737373] mt-0.5">
-                Model perhitungan potensi teknis berstandar IEC 61724-1 berdasarkan spesifikasi modul & kondisi cuaca riil
+              <p class="text-xs text-slate-500 mt-1">
+                Estimasi produksi harian/mingguan, kalkulasi potensi teknis PV, dan integrasi parameter cuaca BMKG & OpenWeather
               </p>
             </div>
-            <div class="flex items-center gap-1.5 text-xs text-[#a3a3a3] bg-[#1a1a1a] px-3 py-1.5 rounded-lg border border-[#2d2d2d]">
-              <span class="text-[#737373]">Kapasitas STC:</span>
-              <strong class="text-white">7.10 kWp (16 Modul Mono PERC)</strong>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <!-- Weather API Source Switcher -->
+              <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button 
+                  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all {weatherModelSource === 'BMKG' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
+                  on:click={() => switchWeatherSource('BMKG')}
+                >
+                  Model BMKG
+                </button>
+                <button 
+                  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all {weatherModelSource === 'OpenWeather' ? 'bg-[#ff4f00] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
+                  on:click={() => switchWeatherSource('OpenWeather')}
+                >
+                  OpenWeather Solar
+                </button>
+              </div>
+
+              <!-- Timeframe Selector -->
+              <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button 
+                  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all {analyticsViewMode === 'hourly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
+                  on:click={() => analyticsViewMode = 'hourly'}
+                >
+                  Per Jam (24 Jam)
+                </button>
+                <button 
+                  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all {analyticsViewMode === 'weekly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
+                  on:click={() => analyticsViewMode = 'weekly'}
+                >
+                  Mingguan (7 Hari)
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Formula Equation Card -->
-          <div class="bg-[#181818] rounded-lg p-4 border border-[#2c2c2c] font-mono text-xs text-[#a3a3a3] overflow-x-auto">
-            <div class="text-[#737373] text-[11px] mb-1 font-sans">Formula Potensi Daya Teknis AC:</div>
-            <span class="text-[#ff4f00]">P_potensi</span> = <span class="text-white">P_STC</span> × (<span class="text-[#38bdf8]">G_POA</span> / 1000) × [1 + <span class="text-[#f59e0b]">γ</span> · (<span class="text-[#22c55e]">T_cell</span> - 25°C)] × <span class="text-white">η_inverter</span> × (1 - <span class="text-[#737373]">L_kabel</span>)
-          </div>
-
-          <!-- Step-by-Step Waterfall Progression -->
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+          <!-- KPI Summary Cards (Clean White Theme) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            <!-- Step 1 -->
-            <div class="bg-[#1a1a1a] p-3 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
-                <span class="text-[10px] text-[#737373] block">1. Kapasitas STC</span>
-                <span class="text-base font-medium text-white">7.10 kWp</span>
-                <p class="text-[10px] text-[#737373] mt-1">1000 W/m² @ 25°C</p>
-              </div>
-              <div class="text-[10px] text-[#a3a3a3] pt-2 border-t border-[#262626]">Baseline Pabrikan</div>
-            </div>
-
-            <!-- Step 2 -->
-            <div class="bg-[#1a1a1a] p-3 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
-              <div>
-                <span class="text-[10px] text-[#737373] block">2. Fluks Radiasi Riil</span>
-                <span class="text-base font-medium text-[#38bdf8]">{theoreticalPvPotentialKw.toFixed(2)} kW</span>
-                <p class="text-[10px] text-[#737373] mt-1">{weatherCurrent.irradiancePoa} W/m² (POA)</p>
-              </div>
-              <div class="text-[10px] text-[#737373] pt-2 border-t border-[#262626]">Faktor Fluks: {(weatherCurrent.irradiancePoa / 1000).toFixed(3)}</div>
-            </div>
-
-            <!-- Step 3 -->
-            <div class="bg-[#1a1a1a] p-3 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
-              <div>
-                <span class="text-[10px] text-[#737373] block">3. Koreksi Suhu Sel</span>
-                <span class="text-base font-medium text-[#f59e0b]">{(theoreticalPvPotentialKw * (1 - thermalLossPct / 100)).toFixed(2)} kW</span>
-                <p class="text-[10px] text-[#737373] mt-1">Tcell {calculatedCellTemp.toFixed(1)}°C</p>
-              </div>
-              <div class="text-[10px] text-[#f59e0b] pt-2 border-t border-[#262626]">Rugi Termal: -{thermalLossPct.toFixed(2)}%</div>
-            </div>
-
-            <!-- Step 4 -->
-            <div class="bg-[#1a1a1a] p-3 rounded-lg border border-[#2a2a2a] flex flex-col justify-between">
-              <div>
-                <span class="text-[10px] text-[#737373] block">4. Potensi Teknis AC</span>
-                <span class="text-base font-medium text-white">{technicalPvPotentialKw.toFixed(2)} kW</span>
-                <p class="text-[10px] text-[#737373] mt-1">Inverter 97.8% & Kabel</p>
-              </div>
-              <div class="text-[10px] text-[#a3a3a3] pt-2 border-t border-[#262626]">Kapasitas Maks AC</div>
-            </div>
-
-            <!-- Step 5 -->
-            <div class="bg-[#17231a] p-3 rounded-lg border border-[#1b4332] flex flex-col justify-between">
-              <div>
-                <span class="text-[10px] text-[#22c55e] block font-medium">5. Realisasi Output</span>
-                <span class="text-base font-medium text-[#22c55e]">{currentActualKw.toFixed(2)} kW</span>
-                <p class="text-[10px] text-[#a3a3a3] mt-1">Inverter Output Aktif</p>
-              </div>
-              <div class="text-[10px] text-[#22c55e] font-medium pt-2 border-t border-[#1b4332]">Pencapaian: {potentialRealizationRatio.toFixed(1)}%</div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- 24-Hour Weather & Irradiance Forecast Timeline -->
-        <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-4">
-          <div class="flex items-center justify-between pb-3 border-b border-[#2d2d2d]">
-            <div>
-              <h3 class="text-sm font-semibold text-white tracking-tight">Timeline Parameter Cuaca & Radiasi 24 Jam</h3>
-              <p class="text-xs text-[#737373] mt-0.5">Integrasi data jam ke jam dari {weatherCurrent.source}</p>
-            </div>
-            <div class="text-xs text-[#737373]">
-              Update: {weatherCurrent.updateTime}
-            </div>
-          </div>
-
-          <!-- Horizontal Hourly Cards Strip -->
-          <div class="overflow-x-auto pb-2">
-            <div class="flex gap-2.5 min-w-[900px]">
-              {#each hourlyForecastData as hour}
-                <div class="flex-1 bg-[#1a1a1a] rounded-lg p-3 border border-[#2a2a2a] flex flex-col items-center text-center gap-2 hover:border-[#383838] transition-colors">
-                  <span class="font-mono text-xs text-[#a3a3a3]">{hour.time}</span>
-                  
-                  <!-- Clean Weather SVG Icon -->
-                  <div class="w-8 h-8 rounded-full bg-[#242424] flex items-center justify-center {hour.icon === 'sun' ? 'text-[#ff4f00]' : hour.icon === 'rain' ? 'text-[#38bdf8]' : 'text-[#a3a3a3]'}">
-                    {#if hour.icon === 'sun'}
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                      </svg>
-                    {:else if hour.icon === 'rain'}
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="16" y1="13" x2="16" y2="21"></line><line x1="8" y1="13" x2="8" y2="21"></line><line x1="12" y1="15" x2="12" y2="23"></line>
-                        <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path>
-                      </svg>
-                    {:else}
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
-                      </svg>
-                    {/if}
-                  </div>
-
-                  <div>
-                    <span class="text-[11px] font-medium text-white block">{hour.weather}</span>
-                    <span class="text-[10px] text-[#737373]">{hour.temp}°C</span>
-                  </div>
-
-                  <div class="w-full pt-2 border-t border-[#262626] flex flex-col gap-1 text-[10px]">
-                    <div class="flex justify-between text-[#737373]">
-                      <span>Radiasi:</span>
-                      <span class="text-white font-medium">{hour.irradiance} W/m²</span>
-                    </div>
-                    <div class="flex justify-between text-[#737373]">
-                      <span>Awan:</span>
-                      <span class="text-[#a3a3a3]">{hour.clouds}%</span>
-                    </div>
-                    <div class="flex justify-between text-[#737373] mt-0.5">
-                      <span>Prediksi:</span>
-                      <span class="text-[#ff4f00] font-medium">{hour.predictedKw} kW</span>
-                    </div>
-                  </div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-600">Estimasi Produksi Hari Ini</span>
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                 </div>
-              {/each}
+                <div class="my-2">
+                  <span class="text-2xl font-bold text-slate-900">31.40 <span class="text-xs text-slate-500 font-normal">kWh</span></span>
+                  <span class="text-[11px] text-emerald-600 block font-semibold mt-0.5">Realisasi: 27.80 kWh (88.5%)</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5 pt-3 border-t border-slate-100">
+                <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: 88.5%;"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-500">
+                  <span>Confidence: 96%</span>
+                  <span>Deviasi: +1.8%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-600">Potensi Teknis PV (Live)</span>
+                  <span class="text-[10px] text-[#ff4f00] font-bold">Cap: 7.10 kWp</span>
+                </div>
+                <div class="my-2">
+                  <span class="text-2xl font-bold text-slate-900">{technicalPvPotentialKw.toFixed(2)} <span class="text-xs text-slate-500 font-normal">kW</span></span>
+                  <span class="text-[11px] text-emerald-600 block font-semibold mt-0.5">Daya Riil: {currentActualKw.toFixed(2)} kW</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5 pt-3 border-t border-slate-100">
+                <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-[#ff4f00] h-full rounded-full" style="width: {potentialRealizationRatio}%;"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-500">
+                  <span>Pemanfaatan: {potentialRealizationRatio.toFixed(1)}%</span>
+                  <span>Inverter Eff: 97.8%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-600">Radiasi Matahari (POA)</span>
+                  <span class="text-[10px] text-sky-600 font-bold">Tilt 15°</span>
+                </div>
+                <div class="my-2">
+                  <span class="text-2xl font-bold text-slate-900">{weatherCurrent.irradiancePoa} <span class="text-xs text-slate-500 font-normal">W/m²</span></span>
+                  <span class="text-[11px] text-slate-600 block font-medium mt-0.5">GHI: {weatherCurrent.irradianceGhi} W/m² · PSH: {weatherCurrent.phel}j</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-[10px] text-slate-500">
+                <span>Indeks UV: {weatherCurrent.uvIndex} (Tinggi)</span>
+                <span>Insolasi: Baik</span>
+              </div>
+            </div>
+
+            <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-5 flex flex-col justify-between hover:border-slate-300 transition-colors">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-600">Kondisi Termal & Modul</span>
+                  <span class="text-[10px] text-slate-500">Sandia Model</span>
+                </div>
+                <div class="my-2">
+                  <span class="text-2xl font-bold text-slate-900">{calculatedCellTemp.toFixed(1)} <span class="text-xs text-slate-500 font-normal">°C</span></span>
+                  <span class="text-[11px] text-amber-600 block font-semibold mt-0.5">Ambient {weatherCurrent.tempAmbient}°C · Loss: -{thermalLossPct.toFixed(2)}%</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-[10px] text-slate-500">
+                <span>Tutupan Awan: {weatherCurrent.cloudCoverTotal}%</span>
+                <span>Angin: {weatherCurrent.windSpeed} km/h</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Main Chart: Prediksi vs Realisasi Curve -->
+          <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-6 flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <h2 class="text-sm font-bold text-slate-900 tracking-tight">
+                  {analyticsViewMode === 'hourly' ? 'Kurva Pembangkitan: Prediksi vs Realisasi Daya (24 Jam)' : 'Prospek Produksi Energi Mingguan (7 Hari)'}
+                </h2>
+                <span class="text-xs text-slate-500">
+                  {analyticsViewMode === 'hourly' ? 'Perbandingan daya aktual inverter vs estimasi model cuaca dan potensi fluks radiasi matahari' : 'Estimasi akumulasi produksi energi harian berdasarkan parameter tutupan awan'}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2 self-start sm:self-auto text-xs text-slate-500">
+                <span>Sumber Data:</span>
+                <span class="text-slate-800 font-semibold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                  {weatherCurrent.source}
+                </span>
+              </div>
+            </div>
+
+            <div class="w-full h-[320px] relative">
+              <Chart option={analyticsViewMode === 'hourly' ? hourlyPredictionChartOption : weeklyPredictionChartOption} />
             </div>
           </div>
+
+          <!-- Weekly Forecast Table -->
+          <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-6 flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 tracking-tight">Prakiraan Produksi & Rekomendasi Operasi 7 Hari</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Panduan optimasi alur daya baterai dan ekspor-impor grid berdasarkan prakiraan cuaca</p>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-slate-500">Akumulasi 7 Hari:</span>
+                <span class="text-emerald-600 font-bold">{totalWeeklyPredictedKwh.toFixed(1)} kWh (~Rp {estimatedWeeklyRevenue})</span>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-500 font-semibold">
+                    <th class="py-3 px-3">Hari & Tanggal</th>
+                    <th class="py-3 px-3">Kondisi Cuaca</th>
+                    <th class="py-3 px-3">Jam Puncak (PSH)</th>
+                    <th class="py-3 px-3">Rata-rata Radiasi</th>
+                    <th class="py-3 px-3">Estimasi Produksi</th>
+                    <th class="py-3 px-3">Akurasi</th>
+                    <th class="py-3 px-3">Rekomendasi Operasional EMS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each weeklyForecastData as item}
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td class="py-3 px-3">
+                        <span class="font-bold text-slate-900 block">{item.day}</span>
+                        <span class="text-[10px] text-slate-500">{item.date}</span>
+                      </td>
+                      <td class="py-3 px-3">
+                        <div class="flex items-center gap-2">
+                          <div class="w-2 h-2 rounded-full {item.predictedKwh > 30 ? 'bg-emerald-500' : item.predictedKwh > 24 ? 'bg-orange-500' : 'bg-sky-500'}"></div>
+                          <span class="text-slate-800 font-medium">{item.weather}</span>
+                        </div>
+                        <span class="text-[10px] text-slate-500 block ml-4">{item.tempMinMax}</span>
+                      </td>
+                      <td class="py-3 px-3 font-mono font-bold text-slate-800">{item.psh} jam</td>
+                      <td class="py-3 px-3 text-slate-600">{item.avgIrradiance} W/m²</td>
+                      <td class="py-3 px-3">
+                        <span class="text-slate-900 font-bold text-sm">{item.predictedKwh.toFixed(1)} <span class="text-[10px] text-slate-500 font-normal">kWh</span></span>
+                        {#if item.actualKwh}
+                          <span class="text-[10px] text-emerald-600 block font-semibold">Riil: {item.actualKwh} kWh</span>
+                        {/if}
+                      </td>
+                      <td class="py-3 px-3">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold {item.confidence >= 90 ? 'text-emerald-600' : 'text-amber-600'}">
+                          {item.confidence}%
+                        </span>
+                      </td>
+                      <td class="py-3 px-3">
+                        <span class="text-[11px] text-slate-600 block max-w-xs">{item.recommendation}</span>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
-
-        <!-- Weekly Forecast Table & EMS Operational Strategy -->
-        <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 flex flex-col gap-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#2d2d2d]">
-            <div>
-              <h3 class="text-sm font-semibold text-white tracking-tight">Prakiraan Produksi & Rekomendasi Operasi 7 Hari</h3>
-              <p class="text-xs text-[#737373] mt-0.5">Panduan optimasi alur daya baterai dan ekspor-impor grid berdasarkan prakiraan cuaca</p>
-            </div>
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-[#737373]">Akumulasi 7 Hari:</span>
-              <span class="text-[#22c55e] font-semibold">{totalWeeklyPredictedKwh.toFixed(1)} kWh (~Rp {estimatedWeeklyRevenue})</span>
-            </div>
-          </div>
-
+        
+      <!-- ============================================================== -->
+      <!-- TAB: DEVICES                                                   -->
+      <!-- ============================================================== -->
+      {:else if activeTab === 'Devices'}
+        <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-6 min-h-[400px]">
+          <h2 class="text-base font-bold text-slate-900 mb-6">Connected Devices ({plantName})</h2>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
               <thead>
-                <tr class="border-b border-[#333] text-[#737373]">
-                  <th class="py-3 px-3">Hari & Tanggal</th>
-                  <th class="py-3 px-3">Kondisi Cuaca</th>
-                  <th class="py-3 px-3">Jam Puncak (PSH)</th>
-                  <th class="py-3 px-3">Rata-rata Radiasi</th>
-                  <th class="py-3 px-3">Estimasi Produksi</th>
-                  <th class="py-3 px-3">Akurasi</th>
-                  <th class="py-3 px-3">Rekomendasi Operasional EMS</th>
+                <tr class="border-b border-slate-200 text-slate-500 font-semibold">
+                  <th class="py-3 px-4">Device ID</th>
+                  <th class="py-3 px-4">Type</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4">Current Power</th>
+                  <th class="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {#each weeklyForecastData as item}
-                  <tr class="border-b border-[#282828] hover:bg-[#252525] transition-colors">
-                    <td class="py-3 px-3">
-                      <span class="font-medium text-white block">{item.day}</span>
-                      <span class="text-[10px] text-[#737373]">{item.date}</span>
-                    </td>
-                    <td class="py-3 px-3">
-                      <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full {item.predictedKwh > 30 ? 'bg-[#22c55e]' : item.predictedKwh > 24 ? 'bg-[#ff4f00]' : 'bg-[#38bdf8]'}"></div>
-                        <span class="text-[#d4d4d4]">{item.weather}</span>
-                      </div>
-                      <span class="text-[10px] text-[#737373] block ml-4">{item.tempMinMax}</span>
-                    </td>
-                    <td class="py-3 px-3 font-mono text-white">{item.psh} jam</td>
-                    <td class="py-3 px-3 text-[#a3a3a3]">{item.avgIrradiance} W/m²</td>
-                    <td class="py-3 px-3">
-                      <span class="text-white font-medium text-sm">{item.predictedKwh.toFixed(1)} <span class="text-[10px] text-[#737373]">kWh</span></span>
-                      {#if item.actualKwh}
-                        <span class="text-[10px] text-[#22c55e] block">Riil: {item.actualKwh} kWh</span>
-                      {/if}
-                    </td>
-                    <td class="py-3 px-3">
-                      <span class="inline-flex items-center gap-1 text-[11px] font-medium {item.confidence >= 90 ? 'text-[#22c55e]' : 'text-[#f59e0b]'}">
-                        {item.confidence}%
+                {#each devices as device}
+                  <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-4 font-bold text-slate-900">{device.id}</td>
+                    <td class="py-3 px-4 text-slate-600">{device.type}</td>
+                    <td class="py-3 px-4">
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        {device.status}
                       </span>
                     </td>
-                    <td class="py-3 px-3">
-                      <span class="text-[11px] text-[#a3a3a3] block max-w-xs">{item.recommendation}</span>
+                    <td class="py-3 px-4 font-semibold text-slate-800">{device.power}</td>
+                    <td class="py-3 px-4 text-right">
+                      <button class="text-[#ff4f00] hover:underline text-xs font-bold" on:click={() => showToast(`Detail perangkat ${device.id}`)}>Detail</button>
                     </td>
                   </tr>
                 {/each}
               </tbody>
             </table>
           </div>
-
-          <!-- Bottom Financial & Environmental Summary Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-[#2d2d2d]">
-            <div class="bg-[#1a1a1a] p-3.5 rounded-lg border border-[#282828] flex items-center justify-between">
-              <div>
-                <span class="text-[11px] text-[#737373] block">Total Estimasi Energi 7 Hari</span>
-                <span class="text-xl font-light text-white">{totalWeeklyPredictedKwh.toFixed(1)} <span class="text-xs text-[#737373]">kWh</span></span>
-              </div>
-              <div class="w-8 h-8 rounded-full bg-[#1b3323] text-[#22c55e] flex items-center justify-center">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                </svg>
-              </div>
-            </div>
-
-            <div class="bg-[#1a1a1a] p-3.5 rounded-lg border border-[#282828] flex items-center justify-between">
-              <div>
-                <span class="text-[11px] text-[#737373] block">Estimasi Nilai Penghematan</span>
-                <span class="text-xl font-light text-white">Rp {estimatedWeeklyRevenue}</span>
-              </div>
-              <div class="w-8 h-8 rounded-full bg-[#352516] text-[#ff4f00] flex items-center justify-center">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M12 6v12M15 9.5a3.5 3.5 0 0 0-7 0c0 4 7 2 7 6a3.5 3.5 0 0 1-7 0"></path>
-                </svg>
-              </div>
-            </div>
-
-            <div class="bg-[#1a1a1a] p-3.5 rounded-lg border border-[#282828] flex items-center justify-between">
-              <div>
-                <span class="text-[11px] text-[#737373] block">Estimasi Reduksi Emisi CO₂</span>
-                <span class="text-xl font-light text-white">{estimatedWeeklyCo2Reduction} <span class="text-xs text-[#737373]">kg CO₂</span></span>
-              </div>
-              <div class="w-8 h-8 rounded-full bg-[#12281e] text-[#22c55e] flex items-center justify-center">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
-              </div>
-            </div>
-          </div>
         </div>
-
-      </div>
-      
-    {:else if activeTab === 'Devices'}
-      <!-- Devices Tab -->
-      <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 min-h-[400px]">
-        <h2 class="text-base font-semibold text-white mb-6">Connected Devices</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead>
-              <tr class="border-b border-[#333] text-[#737373]">
-                <th class="py-3 px-4">Device ID</th>
-                <th class="py-3 px-4">Type</th>
-                <th class="py-3 px-4">Status</th>
-                <th class="py-3 px-4">Current Power</th>
-                <th class="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each devices as device}
-                <tr class="border-b border-[#282828] hover:bg-[#252525] transition-colors">
-                  <td class="py-3 px-4 font-medium text-white">{device.id}</td>
-                  <td class="py-3 px-4 text-[#a3a3a3]">{device.type}</td>
-                  <td class="py-3 px-4">
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-[#12281e] text-[#22c55e] border border-[#1b4332]">
-                      <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
-                      {device.status}
-                    </span>
-                  </td>
-                  <td class="py-3 px-4 text-[#a3a3a3]">{device.power}</td>
-                  <td class="py-3 px-4 text-right">
-                    <button class="text-[#ff4f00] hover:underline text-xs">Detail</button>
-                  </td>
-                </tr>
+        
+      <!-- ============================================================== -->
+      <!-- TAB: ALARMS                                                    -->
+      <!-- ============================================================== -->
+      {:else if activeTab === 'Alarms'}
+        <div class="bg-white border border-[#e2e8f0] shadow-sm rounded-xl p-6 min-h-[400px]">
+          <h2 class="text-base font-bold text-slate-900 mb-6">Recent Alarms & Events</h2>
+          {#if alarms.length === 0}
+            <div class="text-center text-slate-400 py-10">No alarms to display.</div>
+          {:else}
+            <div class="flex flex-col gap-2.5">
+              {#each alarms as alarm}
+                <div class="flex items-center justify-between p-3.5 bg-slate-50 border-l-4 border-amber-500 rounded-lg hover:bg-slate-100 transition-colors text-xs">
+                  <div>
+                    <div class="text-slate-900 font-semibold">{alarm.message}</div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">{alarm.device} · {alarm.time}</div>
+                  </div>
+                  <div class="px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold border border-amber-200">
+                    {alarm.severity}
+                  </div>
+                </div>
               {/each}
-            </tbody>
-          </table>
+            </div>
+          {/if}
         </div>
-      </div>
-      
-    {:else if activeTab === 'Alarms'}
-      <!-- Alarms Tab -->
-      <div class="bg-[#222222] border border-[#2e2e2e] rounded-xl p-6 min-h-[400px]">
-        <h2 class="text-base font-semibold text-white mb-6">Recent Alarms</h2>
-        {#if alarms.length === 0}
-          <div class="text-center text-[#737373] py-10">No alarms to display.</div>
-        {:else}
-          <div class="flex flex-col gap-2.5">
-            {#each alarms as alarm}
-              <div class="flex items-center justify-between p-3.5 bg-[#1a1a1a] border-l-2 border-[#ff4f00] rounded hover:bg-[#252525] transition-colors text-xs">
-                <div>
-                  <div class="text-white font-medium">{alarm.message}</div>
-                  <div class="text-[11px] text-[#737373] mt-0.5">{alarm.device} · {alarm.time}</div>
-                </div>
-                <div class="px-2.5 py-0.5 bg-[#2b1f15] text-[#ff4f00] rounded text-[10px] font-medium border border-[#4a2e16]">
-                  {alarm.severity}
-                </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    {/if}
+      {/if}
 
-  </main>
+    </main>
+  </div>
 
-  <!-- Clean Floating Toast Notification -->
+  <!-- Floating Toast Notification (Clean Light Theme) -->
   {#if toastMessage}
-    <div class="fixed bottom-6 right-6 z-50 bg-[#1e1e1e] border border-[#383838] text-[#e5e5e5] px-4 py-2.5 rounded-lg shadow-xl text-xs flex items-center gap-3 fade-in">
-      <div class="w-1.5 h-1.5 rounded-full bg-[#ff4f00]"></div>
-      <span>{toastMessage}</span>
-      <button class="text-[#737373] hover:text-white ml-2" on:click={() => toastMessage = ''} aria-label="Close">✕</button>
+    <div class="fixed bottom-6 right-6 z-50 bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-xl shadow-xl text-xs flex items-center gap-3 fade-in">
+      <div class="w-2 h-2 rounded-full bg-[#ff4f00]"></div>
+      <span class="font-medium">{toastMessage}</span>
+      <button class="text-slate-400 hover:text-slate-700 ml-2" on:click={() => toastMessage = ''} aria-label="Close">✕</button>
     </div>
   {/if}
 
@@ -3065,8 +2300,48 @@
 
 <style>
   :global(body) {
-    background-color: #1c1c1c;
+    background-color: #f3f7f8;
   }
+  
+  /* Sidebar styles matching application shell */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  @media (min-width: 1024px) {
+    .sidebar {
+      transform: translateX(0);
+    }
+  }
+
+  .nav-button {
+    display: flex;
+    min-height: 54px;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .nav-button:hover,
+  .nav-button.current {
+    background: rgba(0, 0, 0, 0.15);
+    color: #ffffff;
+  }
+  .nav-glyph {
+    font-size: 17px;
+    line-height: 17px;
+  }
+
   .fade-in {
     animation: fadeIn 0.3s ease-in-out;
   }
@@ -3122,10 +2397,6 @@
 
   .flow-anim-forward-fast {
     animation: electricFlowForward 0.85s linear infinite;
-  }
-
-  .flow-anim-reverse-fast {
-    animation: electricFlowReverse 0.85s linear infinite;
   }
 
   .inverter-ring {
